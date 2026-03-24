@@ -1,5 +1,5 @@
 void Sanane(){
-	g_EngineFuncs.ServerPrint("Samanye\r\n");    
+	
 }
 
 class AClass{

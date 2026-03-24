@@ -159,7 +159,7 @@ SvenEnhancer provides some AngelScript enhancements for SvenCoop. The current fe
 - int
 - double
 - bool
-- DateTime (with unittimestamp)
+- DateTime (with unixtimestamp)
 - dictionary
 - array
 - string

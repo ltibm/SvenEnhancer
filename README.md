@@ -156,9 +156,10 @@ SvenEnhancer provides some AngelScript enhancements for SvenCoop. The current fe
 
 
 # Json Serializing / Deserializing Supports
--int
--double
--DateTime (with unittimestamp)
--dictionary
--array
--string
+- int
+- double
+- bool
+- DateTime (with unittimestamp)
+- dictionary
+- array
+- string

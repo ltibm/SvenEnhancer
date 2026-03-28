@@ -1,6 +1,10 @@
 # Sven Enhancer
 Sven Enhancer is a Metamod plugin for SvenCoop, this plugin is tested on Windows 11 and Ubuntu(With WSL).
 
+
+# MySql Supports
+[SEE](https://github.com/ltibm/SvenEnhancer/blob/master/MySql.md)
+
 # Requirements
 https://github.com/hzqst/metamod-fallguys
 

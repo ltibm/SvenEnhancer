@@ -1,4 +1,5 @@
 #include <svenenhancer.h>
+#include <mysql_sven.h>
 
 SvenEnhancerAs::SvenEnhancerAs() {
 	init();
@@ -28,6 +29,7 @@ void* SvenEnhancerAs::getGlobals()
 JValue* SvenEnhancerAs::Json_ParseFromFile(CString& input) {
 	this->AddRef();
 	std::string jsonString = input.c_str();
+	
 	try {
 		std::ifstream fStream(jsonString);
 		nlohmann::json data = nlohmann::json::parse(fStream, nullptr, true, true);
@@ -79,7 +81,22 @@ JValue* SvenEnhancerAs::Json_ParseObjectV2(void* obj, int typeId)
 	jv->FillFromObject(obj, type);
 	return jv;
 }
-
+MySqlConnection* SvenEnhancerAs::MySqlConnection_Create(MySqlConnectionConfig& config)
+{
+	this->AddRef();
+	// libmysql is requierd for this method
+	if (!MySqlConnection::Available())
+		return nullptr;
+	MySqlConnection* connection = new MySqlConnection();
+	if (!connection->Init(&config)) {
+		return nullptr;
+	}
+	return connection;
+}
+bool SvenEnhancerAs::MySql_Loaded()
+{
+	return MysqlFn.loaded;
+}
 CString* SvenEnhancerAs::Version() {
 	CString* res = new CString();;
 	res->assign(SE_VERSION, strlen(SE_VERSION));

@@ -1,8 +1,9 @@
 #pragma once
-#define SE_VERSION "0.30"
-#define SE_DATE "24.03.2026"
-#define LOG(msg, ...) pEngfuncs.pfnConsolePrintEx(CONSOLE_NORMAL, "[Sven Enhancer] " msg "\r\n", ##__VA_ARGS__)
-
+#define SE_VERSION "0.40"
+#define SE_VERSION_FLOAT 0.40
+#define SE_DATE "28.03.2026"
+#define SE_PRINT(msg) \
+    g_engfuncs.pfnServerPrint("[Sven Enhancer] " msg "\r\n")
 
 extern int AS_TYPEID_STRING;
 extern int AS_TYPEID_STRING_T;
@@ -64,4 +65,15 @@ int RegsiterObject(const char* name, asIScriptEngine* engine)
 	r = engine->RegisterObjectBehaviour(name, asBEHAVE_ENUMREFS, "void EnumReferences(int& in)", asMETHOD(T, EnumReferences), thisCall);
 	r = engine->RegisterObjectBehaviour(name, asBEHAVE_RELEASEREFS, "void ReleaseReferences(int& in)", asMETHOD(T, ReleaseReferences), thisCall);
 	return r;
+}
+
+
+template<typename T>
+T GetSymbol(void* handle, const char* name)
+{
+#ifdef _WIN32
+	return reinterpret_cast<T>(GetProcAddress((HMODULE)handle, name));
+#else
+	return reinterpret_cast<T>(dlsym(handle, name));
+#endif
 }

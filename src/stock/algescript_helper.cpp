@@ -58,6 +58,9 @@ CString& CDictHelper::getString(CString& name)
 
 		return *(CString*)v->GetAddressOfValue();
 	}
+	CString* str = new CString();
+	str->assign("", 0);	
+	return *str;
 }
 void CDictHelper::setByName(CString& name, void* obj, int typeId)
 {
@@ -395,5 +398,3 @@ void CScriptAny2::Store(asIScriptEngine* engine, void* ref, int refTypeId)
 		memcpy(&value.valueInt, ref, size);
 	}
 }
-
-

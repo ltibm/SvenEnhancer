@@ -1,5 +1,6 @@
 #include <svenenhancer.h>
 #include <angelscript_expansion.h>
+#include <mysql_sven.h>
 #ifdef _WIN32
 #define EXPORT __declspec(dllexport)
 #else
@@ -70,7 +71,8 @@ extern "C" {
 	C_DLLEXPORT int Meta_Attach(PLUG_LOADTIME /* now */,
 		META_FUNCTIONS* pFunctionTable, meta_globals_t* pMGlobals,
 		gamedll_funcs_t* pGamedllFuncs)
-	{		if (!pMGlobals) {
+	{
+		if (!pMGlobals) {
 			LOG_ERROR(PLID, "Meta_Attach called with null pMGlobals");
 			return FALSE;
 		}
@@ -116,6 +118,10 @@ extern "C" {
 		RegisterAngelScriptMethods();
 		AngelScript_Expand();
 		RegisterAngelScriptHooks();
+		RegisterMysql();
+
+		RegisterSVCvar("svenenhancer_version", SE_VERSION_FLOAT);
+
 		return TRUE;
 	}
 

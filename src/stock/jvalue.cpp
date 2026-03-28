@@ -5,10 +5,6 @@ int JOPT_READ = 1;
 int JOPT_WRITE = 2;
 int JOPT_READWRITE = JOPT_READ | JOPT_WRITE;
 
-
-
-
-
 JValue::JValue()
 {
 	json = nlohmann::json();
@@ -1204,7 +1200,7 @@ CString* JValue::ToString()
 CString* JValue::ToStringI(int indent)
 {
 	CString* str = new CString();
-	auto dumped = json.dump();
+	auto dumped = json.dump(indent);
 	str->assign(dumped.c_str(), dumped.size());
 	return str;
 }
@@ -1240,25 +1236,6 @@ static void JValue_Destruct(JValue* obj)
 	obj->~JValue();
 }
 
-template <typename T>
-int RegsterObject(const char* name, asIScriptEngine* engine)
-{
-	int thisCall = 3;
-	int r = 0;
-	r = engine->RegisterObjectType(name, sizeof(T), asOBJ_REF | asOBJ_GC); assert(r >= 0);
-	r = engine->RegisterObjectBehaviour(name, asBEHAVE_ADDREF, "void AddRef()", asMETHOD(T, AddRef), thisCall);
-	r = engine->RegisterObjectBehaviour(name, asBEHAVE_RELEASE, "void Release()", asMETHOD(T, Release), thisCall);
-
-
-	r = engine->RegisterObjectBehaviour(name, asBEHAVE_SETGCFLAG, "void SetGCFlag()", asMETHOD(T, SetGCFlag), thisCall);
-	r = engine->RegisterObjectBehaviour(name, asBEHAVE_GETGCFLAG, "bool GetGCFlag() const", asMETHOD(T, SetGCFlag), thisCall);
-
-
-	r = engine->RegisterObjectBehaviour(name, asBEHAVE_GETREFCOUNT, "int GetRefCount() const", asMETHOD(T, GetRefCount), thisCall);
-	r = engine->RegisterObjectBehaviour(name, asBEHAVE_ENUMREFS, "void EnumReferences(int& in)", asMETHOD(T, EnumReferences), thisCall);
-	r = engine->RegisterObjectBehaviour(name, asBEHAVE_RELEASEREFS, "void ReleaseReferences(int& in)", asMETHOD(T, ReleaseReferences), thisCall);
-	return r;
-}
 
 
 void RegisterJValue(asIScriptEngine* engine)
@@ -1271,19 +1248,8 @@ void RegisterJValue(asIScriptEngine* engine)
 	int r = engine->RegisterGlobalProperty("const int JOPT_READ", &JOPT_READ);
 	r = engine->RegisterGlobalProperty("const int JOPT_WRITE", &JOPT_WRITE);
 	r = engine->RegisterGlobalProperty("const int JOPT_READWRITE", &JOPT_READWRITE);
-	/*
-		Globals Start
-	*/
 
-
-	/*
-		Globals End
-	*/
-
-	/*
-		JValue Start
-	*/
-	r = RegsterObject<JValue>("JValue", engine);
+	r = RegisterObject<JValue>("JValue", engine, asOBJ_REF | asOBJ_GC);
 	r = engine->RegisterObjectMethod("JValue", "bool opEquals(const JValue &in other) const", asMETHOD(JValue, Equals), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "string& GetString() const", asMETHOD(JValue, GetString), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "JValue@ GetByKey(string &in input) const", asMETHOD(JValue, GetByKey), thisCall); assert(r >= 0);
@@ -1311,7 +1277,7 @@ void RegisterJValue(asIScriptEngine* engine)
 	JSerializeConfig Start
 	*/
 
-	r = RegsterObject<JSerializeConfig>("JSerializeConfig", engine);
+	r = RegisterObject<JSerializeConfig>("JSerializeConfig", engine, asOBJ_REF | asOBJ_GC);
 	r = engine->RegisterObjectMethod("JSerializeConfig", "JSerializeConfig@ Ignore(string& in name, int flags = JOPT_READWRITE) const", asMETHOD(JSerializeConfig, IgnoreFlag), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JSerializeConfig", "JSerializeConfig@ PropName(string& in name, string& in _alias, int flags = JOPT_READWRITE) const", asMETHOD(JSerializeConfig, PropNameFlag), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JSerializeConfig", "JSerializeConfig@ Clear() const", asMETHOD(JSerializeConfig, Clear), thisCall); assert(r >= 0);

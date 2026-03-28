@@ -108,3 +108,48 @@ private:
 	asIScriptFunction* fnStore;
 	asIScriptContext* initContext(asIScriptFunction* fn);
 };
+
+
+template <typename T>
+int RegisterObject(const char* name, asIScriptEngine* engine, int flags)
+{
+	int r = 0;
+
+	r = engine->RegisterObjectType(name, sizeof(T), flags); assert(r >= 0);
+
+	if (flags & asOBJ_REF)
+	{
+		r = engine->RegisterObjectBehaviour(name, asBEHAVE_ADDREF,
+			"void AddRef()", asMETHOD(T, AddRef), asCALL_THISCALL);
+
+		r = engine->RegisterObjectBehaviour(name, asBEHAVE_RELEASE,
+			"void Release()", asMETHOD(T, Release), asCALL_THISCALL);
+
+		r = engine->RegisterObjectBehaviour(name, asBEHAVE_SETGCFLAG,
+			"void SetGCFlag()", asMETHOD(T, SetGCFlag), asCALL_THISCALL);
+
+		r = engine->RegisterObjectBehaviour(name, asBEHAVE_GETGCFLAG,
+			"bool GetGCFlag() const", asMETHOD(T, GetGCFlag), asCALL_THISCALL);
+
+		r = engine->RegisterObjectBehaviour(name, asBEHAVE_GETREFCOUNT,
+			"int GetRefCount() const", asMETHOD(T, GetRefCount), asCALL_THISCALL);
+
+		r = engine->RegisterObjectBehaviour(name, asBEHAVE_ENUMREFS,
+			"void EnumReferences(int& in)", asMETHOD(T, EnumReferences), asCALL_THISCALL);
+
+		r = engine->RegisterObjectBehaviour(name, asBEHAVE_RELEASEREFS,
+			"void ReleaseReferences(int& in)", asMETHOD(T, ReleaseReferences), asCALL_THISCALL);
+	}
+
+	return r;
+}
+static asITypeInfo* stringType = nullptr;
+inline CString* CreateString(const char* text)
+{
+	CString* resp = new CString();
+	//auto engine = GetASEngine();
+	//auto type = stringType ? stringType : stringType = engine->GetTypeInfoByName("string");
+	//auto resp = static_cast<CString*>(engine->CreateScriptObject(type));
+	resp->assign(text, strlen(text));
+	return resp;
+}

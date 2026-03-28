@@ -1,9 +1,16 @@
 #include <svenenhancer.h>
 #include "angelscript_expansion.h"
+#include <mysql_sven.h>
 
 CASDocumentation* asDoc = nullptr;
 SvenEnhancerAs* g_SE = nullptr;
 void AngelScript_Expand() {
+
+	ASEXT_RegisterScriptBuilderDefineCallback([](CScriptBuilder* pScriptBuilder) {
+		ASEXT_CScriptBuilder_DefineWord(pScriptBuilder, "SE");
+		ASEXT_CScriptBuilder_DefineWord(pScriptBuilder, "SE_MYSQL");
+	});
+
 	ASEXT_RegisterDocInitCallback([](CASDocumentation* pASDoc) {
 		g_SE = new SvenEnhancerAs();
 		asDoc = pASDoc;
@@ -15,6 +22,8 @@ void AngelScript_Expand() {
 		//engine->RegisterGlobalFunction("JValue@ JsonParseFromObject(ref @)", asFunctionPtr(Json_ParseObject), asCALL_CDECL);
 
 		RegisterJValue(engine);
+
+		RegisterMysqlAngelScript(engine);
 
 
 		engine->RegisterObjectMethod(
@@ -29,6 +38,9 @@ void AngelScript_Expand() {
 		engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParse(string& in input)", asMETHOD(SvenEnhancerAs, Json_Parse), asCALL_THISCALL);
 		engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParseFromFile(string& in path)", asMETHOD(SvenEnhancerAs, Json_ParseFromFile), asCALL_THISCALL);
 		engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParseFromObject(?&in obj)", asMETHOD(SvenEnhancerAs, Json_ParseObjectV2), asCALL_THISCALL);
+
+		engine->RegisterObjectMethod("SvenEnhancer", "bool MySql_Loaded()", asMETHOD(SvenEnhancerAs, MySql_Loaded), asCALL_THISCALL);
+		engine->RegisterObjectMethod("SvenEnhancer", "MySqlConnection@ MySql_CreateConnection(MySqlConnectionConfig& in config)", asMETHOD(SvenEnhancerAs, MySqlConnection_Create), asCALL_THISCALL);
 
 		//engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParseFromObject(ref @)", asMETHOD(SvenEnhancerAs, Json_ParseObject), asCALL_THISCALL);
 		

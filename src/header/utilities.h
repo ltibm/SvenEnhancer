@@ -61,3 +61,16 @@ inline void* Array_At(CScriptArray* array, asUINT index)
 	else
 		return array->m_buffer->m_buf + elementsize * index;
 }
+inline cvar_t* RegisterSVCvar(const char* cvar_name, float cvar_value)
+{
+	cvar_t _cvar;
+	cvar_t& cvar = _cvar;
+	cvar.name = new char[25];
+	cvar.value = cvar_value;
+	cvar.string = new char[10];
+	cvar.flags = FCVAR_SERVER;
+	sprintf(cvar.string, "%f", cvar_value);
+	strcpy(cvar.name, cvar_name);
+	g_engfuncs.pfnCVarRegister(&cvar);
+	return g_engfuncs.pfnCVarGetPointer(cvar_name);
+}

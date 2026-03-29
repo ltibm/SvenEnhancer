@@ -1,4 +1,7 @@
+#pragma once
 #include <mysql.h>
+#include <xxhash.h>
+
 #ifdef WIN32
 extern HMODULE mysqlHandle;
 #else
@@ -26,6 +29,7 @@ struct Mysql
     decltype(&mysql_num_fields) num_fields;
     decltype(&mysql_real_escape_string) escape_string;
     decltype(&mysql_real_escape_string_quote) escape_string_quote;
+    decltype(&mysql_ping) ping;
 };
 static Mysql MysqlFn;
 class MySqlStoreResult;
@@ -107,7 +111,9 @@ public:
     void SetPassword(CString& v);
     CString* GetDatabase();
     void SetDatabase(CString& v);
+    uint64_t GetHash() const;
     static MySqlConnectionConfig* Factory(MySqlConnectionConfig* mem);
     static MySqlConnectionConfig* FactoryCopy(MySqlConnectionConfig* mem, const MySqlConnectionConfig& o);
     static void Destruct(MySqlConnectionConfig* item);
 };
+

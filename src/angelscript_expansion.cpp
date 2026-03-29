@@ -1,6 +1,7 @@
 #include <svenenhancer.h>
 #include "angelscript_expansion.h"
 #include <mysql_sven.h>
+#include <callbackitem.h>
 
 CASDocumentation* asDoc = nullptr;
 SvenEnhancerAs* g_SE = nullptr;
@@ -25,6 +26,8 @@ void AngelScript_Expand() {
 
 		RegisterMysqlAngelScript(engine);
 
+		RegisterCallBackItem(pASDoc, engine);
+		RegisterCallbackMethods(pASDoc, engine);
 
 		engine->RegisterObjectMethod(
 			"SvenEnhancer",
@@ -41,6 +44,8 @@ void AngelScript_Expand() {
 
 		engine->RegisterObjectMethod("SvenEnhancer", "bool MySql_Loaded()", asMETHOD(SvenEnhancerAs, MySql_Loaded), asCALL_THISCALL);
 		engine->RegisterObjectMethod("SvenEnhancer", "MySqlConnection@ MySql_CreateConnection(MySqlConnectionConfig& in config)", asMETHOD(SvenEnhancerAs, MySqlConnection_Create), asCALL_THISCALL);
+		engine->RegisterObjectMethod("SvenEnhancer", "void PluginExit()", asMETHOD(SvenEnhancerAs, PluginExit), asCALL_THISCALL);
+
 
 		//engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParseFromObject(ref @)", asMETHOD(SvenEnhancerAs, Json_ParseObject), asCALL_THISCALL);
 		

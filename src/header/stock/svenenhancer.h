@@ -17,6 +17,7 @@ namespace std {
 #include <extdll.h>	
 #include <meta_api.h>
 #include <cstddef>
+#include <casmodule.h>
 
 #include "signatures.h"
 #include "angelscript_addon.h"
@@ -30,3 +31,5 @@ namespace std {
 #include "extern_hook.h"
 #include "angelscript_helper.h"
 #include <jvalue.h>
+#include <moduledata.h>
+#include <callbackmethod.h>

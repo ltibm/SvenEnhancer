@@ -1,6 +1,7 @@
 #include <svenenhancer.h>
 
 #include <mysql_sven.h>
+#include <mysql_connection_pool.h>
 #ifndef WIN32
 #include <filesystem>
 #endif
@@ -9,7 +10,7 @@ bool MySqlLoaded;
 #ifdef WIN32
 HMODULE  mysqlHandle;
 #else
- void* mysqlHandle;
+void* mysqlHandle;
 #endif
 
 void RegisterMysql() {
@@ -28,11 +29,11 @@ void RegisterMysql() {
 	{
 #ifdef _WIN32
 		HMODULE lib = GetModuleHandleA(p.string().c_str());
-		if(!lib)
+		if (!lib)
 			lib = LoadLibraryA(p.string().c_str());
 #else
 		void* lib = dlopen(p.string().c_str(), RTLD_NOLOAD);
-		if(!lib)
+		if (!lib)
 			lib = dlopen(libPath.c_str(), RTLD_LAZY);
 #endif
 		if (!lib)
@@ -66,8 +67,8 @@ void RegisterMysqlSymbols()
 	MysqlFn.num_fields = GetSymbol<decltype(&mysql_num_fields)>(mysqlHandle, "mysql_num_fields");
 	MysqlFn.escape_string = GetSymbol<decltype(&mysql_real_escape_string)>(mysqlHandle, "mysql_real_escape_string");
 	MysqlFn.escape_string_quote = GetSymbol<decltype(&mysql_real_escape_string_quote)>(mysqlHandle, "mysql_real_escape_string_quote");
-	MysqlFn.loaded = MysqlFn.init && MysqlFn.real_connect && MysqlFn._close && MysqlFn.query && MysqlFn.error;
-
+	MysqlFn.ping = GetSymbol<decltype(&mysql_ping)>(mysqlHandle, "mysql_ping");
+	MysqlFn.loaded = MysqlFn.init && MysqlFn.real_connect && MysqlFn._close && MysqlFn.query && MysqlFn.error && MysqlFn.ping;
 }
 
 void RegisterMysqlAngelScript(asIScriptEngine* engine) {
@@ -140,7 +141,7 @@ void RegisterMysqlAngelScript(asIScriptEngine* engine) {
 }
 
 MySqlConnection::MySqlConnection() {
-;
+	;
 
 
 }
@@ -167,6 +168,10 @@ bool MySqlConnection::Open()
 		return false;
 	if (this->connection)
 	{
+		auto hash = this->config->GetHash();
+
+
+
 		unsigned int ssl_mode = SSL_MODE_DISABLED;
 		MysqlFn.options(this->connection, MYSQL_OPT_SSL_MODE, &ssl_mode);
 		if (MysqlFn.real_connect(this->connection, this->config->host.c_str(), this->config->username.c_str(), this->config->password.c_str(), this->config->database.c_str(), this->config->port, nullptr, 0))
@@ -207,7 +212,7 @@ bool MySqlConnection::Available()
 }
 CString* MySqlConnection::GetError()
 {
-	if(!this->connection)
+	if (!this->connection)
 		return nullptr;
 	auto error = MysqlFn.error(this->connection);
 	if (error)
@@ -220,7 +225,7 @@ CString* MySqlConnection::GetError()
 }
 CString* MySqlConnection::Escape(CString& input)
 {
-	if(!this->connection)
+	if (!this->connection)
 		return nullptr;
 	char escaped[1024];
 	unsigned long len = MysqlFn.escape_string(
@@ -257,7 +262,7 @@ MySqlStoreResult* MySqlConnection::StoreResult()
 	MySqlStoreResult* sr = new MySqlStoreResult(result);
 	return sr;
 
-}	
+}
 
 MySqlConnectionConfig::MySqlConnectionConfig() {
 
@@ -300,6 +305,20 @@ void MySqlConnectionConfig::SetDatabase(CString& v)
 	this->database = v.c_str();
 }
 
+uint64_t MySqlConnectionConfig::GetHash() const
+{
+	std::string data;
+	data.reserve(
+		host.size() +
+		username.size() +
+		password.size() +
+		database.size() +
+		32
+	);
+	data += host + '|' + username + '|' + password + '|' + database + '|' + std::to_string(port);
+	return XXH3_64bits(data.data(), data.size());
+}
+
 MySqlConnectionConfig::MySqlConnectionConfig(const MySqlConnectionConfig& o) {
 	this->username = o.username;
 	this->password = o.password;
@@ -318,8 +337,8 @@ MySqlConnectionConfig* MySqlConnectionConfig::Factory(MySqlConnectionConfig* mem
 	return obj;
 }
 MySqlConnectionConfig* MySqlConnectionConfig::FactoryCopy(MySqlConnectionConfig* mem, const MySqlConnectionConfig& o) {
-	 new(mem) MySqlConnectionConfig(o);
-	 return nullptr;
+	new(mem) MySqlConnectionConfig(o);
+	return nullptr;
 }
 void MySqlConnectionConfig::Destruct(MySqlConnectionConfig* item) {
 	item->~MySqlConnectionConfig();

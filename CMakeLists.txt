@@ -1,3 +1,5 @@
+
+
 cmake_minimum_required(VERSION 3.25)
 project(SvenEnhancer LANGUAGES CXX)
 
@@ -22,11 +24,25 @@ include_directories(
     "${CMAKE_SOURCE_DIR}/src/angelscript/header"
     "${CMAKE_SOURCE_DIR}/src/angelscript/include"
     "${CMAKE_SOURCE_DIR}/src/thirdparty/mysql-connector/include"
+    "${CMAKE_SOURCE_DIR}/src/thirdparty/xxhash/"
 )
 
 # Plugin kaynak
-add_library(SvenEnhancer SHARED src/SvenEnhancer.cpp "src/header/stock/signatures.h" "src/header/stock/extern_hook.h" "src/angelscript/include/angelscript_addon.h" "src/angelscript/source/angelscript_addon.cpp" "src/engine/engine_hook.cpp" "src/engine/dll_hook.cpp" "src/header/stock/vftable.h" "src/header/stock/utility.h" "src/stock/dll_api.cpp" "src/stock/engine_api.cpp" "src/stock/vftable.cpp" "src/stock/sdk_util.cpp" "src/stock/h_export.cpp" "src/header/angelscript_expansion.h" "src/angelscript_expansion.cpp" "src/header/constants.h" "src/stock/constants.cpp" "src/utilities.cpp" "src/header/utilities.h" "src/header/stock/svenenhancer.h" "src/header/stock/angelscript_helper.h" "src/stock/algescript_helper.cpp" "src/header/stock/globaltypes.h" "src/stock/globaltypes.cpp" "src/header/stock/sven_enhancer_as.h" "src/stock/sven_enhancer_as.cpp" "src/header/stock/casbasegcobject.h" "src/stock/casbasegcobject.cpp" "src/header/stock/jvalue.h" "src/stock/jvalue.cpp" "src/header/mysql_sven.h" "src/mysql_sven.cpp")
+add_library(SvenEnhancer SHARED src/SvenEnhancer.cpp "src/header/stock/signatures.h" "src/header/stock/extern_hook.h" "src/angelscript/include/angelscript_addon.h" "src/angelscript/source/angelscript_addon.cpp" "src/engine/engine_hook.cpp" "src/engine/dll_hook.cpp" "src/header/stock/vftable.h" "src/header/stock/utility.h" "src/stock/dll_api.cpp" "src/stock/engine_api.cpp" "src/stock/vftable.cpp" "src/stock/sdk_util.cpp" "src/stock/h_export.cpp" "src/header/angelscript_expansion.h" "src/angelscript_expansion.cpp" "src/header/constants.h" "src/stock/constants.cpp" "src/utilities.cpp" "src/header/utilities.h" "src/header/stock/svenenhancer.h" "src/header/stock/angelscript_helper.h" "src/stock/algescript_helper.cpp" "src/header/stock/globaltypes.h" "src/stock/globaltypes.cpp" "src/header/stock/sven_enhancer_as.h" "src/stock/sven_enhancer_as.cpp" "src/header/stock/casbasegcobject.h" "src/stock/casbasegcobject.cpp" "src/header/stock/jvalue.h" "src/stock/jvalue.cpp" "src/header/mysql_sven.h" "src/mysql_sven.cpp" "src/header/mysql_connection_pool.h" "src/mysql_connection_pool.cpp" "src/header/callbackitem.h" "src/callbackitem.cpp" "src/header/stock/moduledata.h" "src/moduledata.cpp" "src/header/stock/callbackmethod.h" "src/callbackmethod.cpp" "src/header/stock/casmodule.h" "src/stock/casmodule.cpp")
 
+set(XXHASH_DIR ${CMAKE_SOURCE_DIR}/src/thirdparty/xxhash)
+enable_language(C)
+target_sources(SvenEnhancer PRIVATE
+    ${XXHASH_DIR}/xxhash.c
+)
+
+target_include_directories(SvenEnhancer PRIVATE
+    ${XXHASH_DIR}
+)
+set_source_files_properties(
+    ${XXHASH_DIR}/xxhash.c
+    PROPERTIES LANGUAGE C
+)
 
 
 if(WIN32)

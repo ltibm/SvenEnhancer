@@ -18,6 +18,7 @@ public:
 	RefObject* pDictionary = nullptr;
 	MySqlConnection* MySqlConnection_Create(MySqlConnectionConfig& config);
 	void* getGlobals();
+	void PluginExit();
 
 private:
 	void init();

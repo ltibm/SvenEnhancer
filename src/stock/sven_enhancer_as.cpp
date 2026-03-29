@@ -131,3 +131,12 @@ CString* SvenEnhancerAs::Interpolate(CString& input, void* dict)
 	//std::locale::global(old);
 	return  res;
 }
+void SvenEnhancerAs::PluginExit()
+{
+	auto module = GetModulePtr(ASEXT_GetServerManager());
+	if (module)
+	{
+		deleteModuleData(module);
+
+	}
+}

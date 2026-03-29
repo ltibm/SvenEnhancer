@@ -74,7 +74,7 @@ void SelectTest()
 		}
 	}
 }
-void PluginEnd()
+void PluginExit()
 {
 	if(@connection !is null){
 		connection.Close();

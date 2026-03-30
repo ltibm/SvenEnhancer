@@ -9,12 +9,12 @@ void PluginInit()
 	g_Module.ScriptInfo.SetContactInfo( "test" );
 	MySqlConnectionConfig config;
 	config.Host = "127.0.0.1";
+	//No need to set if mysql server using 3306;
 	config.Port = 3306;
 	config.Username = "root";
 	config.Password = "1234";
 	config.Database = "svenDB";
 
-	//No need to set if mysql server using 3306;
 	@connection = SE.MySql_CreateConnection(config);
 	if(@connection !is null)
 	{

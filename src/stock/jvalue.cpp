@@ -5,17 +5,16 @@ int JOPT_READ = 1;
 int JOPT_WRITE = 2;
 int JOPT_READWRITE = JOPT_READ | JOPT_WRITE;
 
-JValue::JValue()
+JValue::JValue() : json(*new nlohmann::json())
 {
-	json = nlohmann::json();
+
 }
-JValue::JValue(nlohmann::json& _json)
+JValue::JValue(nlohmann::json& _json) : json(_json)
 {
-	json = _json;
+
 }
-JValue::JValue(nlohmann::json& _json, int _curDepth)
+JValue::JValue(nlohmann::json& _json, int _curDepth) : json(_json)
 {
-	json = _json;
 	curDepth = _curDepth;
 
 }
@@ -59,7 +58,7 @@ JValue* JValue::Path(CString& key)
 	std::string str = std::string(key.c_str());
 	try
 	{
-		nlohmann::json jv = json.at(nlohmann::json::json_pointer(str));
+		nlohmann::json& jv = json.at(nlohmann::json::json_pointer(str));
 		JValue* j = new JValue(jv);
 		return j;
 	}
@@ -72,7 +71,7 @@ JValue* JValue::Path(CString& key)
 
 CString* JValue::GetString()
 {
-	std::string str = json;
+	std::string str = json.get<std::string>();
 	CString* cstr = new CString();
 	cstr->assign(str.c_str(), str.length());
 	return cstr;
@@ -80,17 +79,17 @@ CString* JValue::GetString()
 
 asINT32 JValue::GetInt()
 {
-	return json;
+	return json.get<asINT32>();
 }
 
 double JValue::GetDouble()
 {
-	return json;
+	return json.get<double>();
 }
 
 bool JValue::GetBool()
 {
-	return json;
+	return json.get<bool>();
 }
 template <typename T>
 T TransformValue(const nlohmann::json& jvalue) {
@@ -381,7 +380,7 @@ void* getJValue(int typeId, nlohmann::json& t, asIScriptEngine* engine, int curD
 		if (typeId > 0)
 		{
 
-	
+
 
 
 			asITypeInfo* anyType = engine->GetTypeInfoByDecl("any");
@@ -389,7 +388,7 @@ void* getJValue(int typeId, nlohmann::json& t, asIScriptEngine* engine, int curD
 			auto any = engine->CreateScriptObject(anyType);
 			CScriptAny2* s = reinterpret_cast<CScriptAny2*>(any);
 			CAnyHelper* helper = new CAnyHelper(s);
-			
+
 			//CScriptAny* s_0 = reinterpret_cast<CScriptAny*>(any);
 			engine->NotifyGarbageCollectorOfNewObject(any, anyType);
 			auto* obj = getJValue(typeId, t, engine, curDepth);
@@ -415,7 +414,7 @@ void* getJValue(int typeId, nlohmann::json& t, asIScriptEngine* engine, int curD
 			}
 			s->value = *vs;
 			return s;*/
-			
+
 		}
 	}
 	else if (typeId != asTYPEID_VOID) {
@@ -783,7 +782,7 @@ void JValue::DeserializeC(asIScriptGeneric* gen)
 	JValue* self = reinterpret_cast<JValue*>(gen->GetObject());
 	if (!self) return;
 	void* addr = gen->GetAddressOfArg(0);
-	void** addr2 = (void**) gen->GetAddressOfArg(0);
+	void** addr2 = (void**)gen->GetAddressOfArg(0);
 	bool r = false;
 	if (addr)
 	{
@@ -807,7 +806,7 @@ bool JValue::DeserializePlus(void** addr, int typeId)
 	void* obj = *addr;
 	if (typeId & asTYPEID_OBJHANDLE)
 	{
-		 obj = *(void**)obj;
+		obj = *(void**)obj;
 	}
 	auto eng = ASEXT_GetServerManager()->scriptEngine;
 	auto c = eng->GetTypeInfoById(typeId);
@@ -827,7 +826,7 @@ bool JValue::Deserialize(void* obj, int typeId)
 		obj = *(void**)obj;
 	}
 	auto eng = ASEXT_GetServerManager()->scriptEngine;
-	
+
 	auto c = eng->GetTypeInfoById(typeId);
 	if (!c)
 		return false;
@@ -895,6 +894,13 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 	//Maximum depth
 	if (depth >= MAX_DEPTH)
 		return nullptr;
+
+	if (type == GetMyTypeInfo())
+	{
+		auto otherJv = static_cast<JValue*>(obj);
+		nlohmann::json& jv = otherJv->json;
+		return jv;
+	}
 
 	auto c = type;
 	auto eng = type->GetEngine();
@@ -1172,7 +1178,7 @@ JValue* JValue::At(size_t index)
 {
 	try
 	{
-		nlohmann::json jv = json.at(index);
+		nlohmann::json& jv = json.at(index);
 		JValue* j = new JValue(jv);
 		return j;
 	}
@@ -1205,19 +1211,292 @@ CString* JValue::ToStringI(int indent)
 	return str;
 }
 
+void JValue::SaveToFile(CString& path)
+{
+	SaveToFileI(path, -1);
+}
+void JValue::SaveToFileI(CString& path, int indent)
+{
+	std::string filePath = path.c_str();
+	if (filePath.ends_with(".as"))
+		return;
+	std::filesystem::path _path(filePath);
+	std::filesystem::path rootPath = "./svencoop";
+	std::filesystem::path full = std::filesystem::weakly_canonical(rootPath / _path);
+	try
+	{
+		std::ofstream out(full);
+		out << json.dump(indent);
+	}
+	catch (const std::exception&)
+	{
+
+	}
+}
+//bool JValue::Set(void* obj, int typeId)
+//{
+//	if (typeId & asTYPEID_OBJHANDLE)
+//		obj = *(void**)obj;
+//	if (!obj)
+//		return false;
+//	auto type = GetASEngine()->GetTypeInfoById(typeId);
+//	this->Clear();
+//	json = FillFromObjectPrv(obj, type, typeId, 0);
+//	return true;
+//}
+//void JValue::SetNull()
+//{
+//
+//}
+bool JValue::SetByKey(CString& key, void* obj, int typeId)
+{
+	if (!json.is_object())
+		return false;
+	if (typeId & asTYPEID_OBJHANDLE)
+		obj = *(void**)obj;
+	if (!obj)
+		return false;
+
+
+	auto type = GetASEngine()->GetTypeInfoById(typeId);
+
+	auto jv =   FillFromObjectPrv(obj, type, typeId, 0);
+	try
+	{
+		json[key.c_str()] = jv;	
+		return true;
+
+	}
+	catch (const std::exception&)
+	{
+
+	}
+	return false;
+}
+bool JValue::SetByPath(CString& key, void* obj, int typeId)
+{
+	if (!json.is_object() && !json.is_array())
+		return false;
+	if (typeId & asTYPEID_OBJHANDLE)
+		obj = *(void**)obj;
+	if (!obj)
+		return false;
+	auto type = GetASEngine()->GetTypeInfoById(typeId);
+	auto jv = FillFromObjectPrv(obj, type, typeId, 0);
+	try
+	{
+		json[nlohmann::json::json_pointer(key.c_str())] = jv;
+		return true;
+
+	}
+	catch (const std::exception&)
+	{
+
+	}
+	return false;
+}
+bool JValue::SetByKeyNull(CString& key)
+{
+	if (!json.is_object())
+		return false;
+	try
+	{
+		json[key.c_str()] = nullptr;
+		return true;
+	}
+	catch (const std::exception&)
+	{
+
+	}
+	return false;
+}
+bool JValue::SetByPathNull(CString& key)
+{
+	if (!json.is_object() && !json.is_array())
+		return false;
+	try
+	{
+		json[nlohmann::json::json_pointer(key.c_str())] = nullptr;
+		return true;
+	}
+	catch (const std::exception&)
+	{
+
+	}
+	return false;
+}
+bool JValue::RemoveByIndex(size_t index)
+{
+	if (!json.is_array() || index < 0)
+		return false;
+	try
+	{
+		json.erase(index);
+		return true;
+	}
+	catch (const std::exception&)
+	{
+
+	}
+	return false;
+}
+bool JValue::RemoveByPath(CString& key)
+{
+	if (!json.is_object() && !json.is_array())
+		return false;
+	try
+	{
+		json.erase(nlohmann::json::json_pointer(key.c_str()));
+		return true;
+	}
+	catch (const std::exception&)
+	{
+
+	}
+	return false;
+}
+bool JValue::RemoveByKey(CString& key)
+{
+	if (!json.is_object())
+		return false;
+	try
+	{
+		json.erase(key.c_str());
+		return true;
+	}
+	catch (const std::exception&)
+	{
+			
+	}
+	return false;
+}
+bool JValue::SetByIndex(size_t index, void* obj, int typeId)
+{
+	if (!json.is_array() || index < 0)
+		return false;
+	if (typeId & asTYPEID_OBJHANDLE)
+		obj = *(void**)obj;
+	if (!obj)
+		return false;
+	auto type = GetASEngine()->GetTypeInfoById(typeId);
+	auto jv = FillFromObjectPrv(obj, type, typeId, 0);
+	try
+	{
+		json[index] = jv;
+		return true;
+
+	}
+	catch (const std::exception&)
+	{
+	}
+	return false;
+}
+bool JValue::SetByIndexNull(size_t index)
+{
+	if (!json.is_array() || index < 0)
+		return false;
+	try
+	{
+		json[index] = nullptr;
+		return true;
+	}
+	catch (const std::exception&)
+	{
+
+	}
+	return false;
+}
+bool JValue::Add(void* obj, int typeId)
+{
+	if (!json.is_array())
+		return false;
+	if (typeId & asTYPEID_OBJHANDLE)
+		obj = *(void**)obj;
+	if (!obj)
+		return false;
+	auto type = GetASEngine()->GetTypeInfoById(typeId);
+	auto jv = FillFromObjectPrv(obj, type, typeId, 0);
+	try
+	{
+		json.push_back(jv);
+		return true;
+
+	}
+	catch (const std::exception&)
+	{
+	}
+	return false;
+}
+bool JValue::AddNull()
+{
+	if (!json.is_array())
+		return false;
+	try
+	{
+		json.push_back(nullptr);
+		return true;
+	}
+	catch (const std::exception&)
+	{
+
+	}
+	return false;
+}
 void JValue::Clear()
 {
 	json.clear();
 }
 
+void* JValue::GetKeys()
+{
+	auto eng = GetASEngine();
+	asITypeInfo* arrInfo = eng->GetTypeInfoByDecl("array<string>");
+	int typeId = arrInfo->GetTypeId();
+	auto arr = eng->CreateScriptObject(arrInfo);
+	eng->NotifyGarbageCollectorOfNewObject(arr, arrInfo);
+	if(!json.is_object())
+		return arr;
+	auto method = arrInfo->GetMethodByName("insertLast");
+	for (auto& [key, value] : json.items()) {
+		CString* s = new CString();
+		s->assign(key.c_str(), key.length());
+		auto ctx = eng->RequestContext();
+		ctx->Prepare(method);
+		ctx->SetObject(arr);
+		ctx->SetArgObject(0, s);
+		ctx->Execute();
+	}
+	auto it = json.begin();
+	return arr;
+}
+
+size_t JValue::Count()
+{
+	if (json.is_array() || json.is_object())
+		return json.size();
+	return 0;
+}
+
 JValue::~JValue()
 {
+	json = nlohmann::json(nullptr);
 }
 
 
 bool JValue::operator==(const JValue& other)
 {
 	return Equals(other);
+}
+
+asITypeInfo* JValue::GetMyTypeInfo()
+{
+	if (!myTypeInfo)
+	{
+		auto eng = GetASEngine();
+		if(eng)
+			myTypeInfo = eng->GetTypeInfoByName("JValue");
+	}
+	return myTypeInfo;
 }
 
 void RegisterJson(asIScriptEngine* engine) {
@@ -1248,6 +1527,15 @@ void RegisterJValue(asIScriptEngine* engine)
 	int r = engine->RegisterGlobalProperty("const int JOPT_READ", &JOPT_READ);
 	r = engine->RegisterGlobalProperty("const int JOPT_WRITE", &JOPT_WRITE);
 	r = engine->RegisterGlobalProperty("const int JOPT_READWRITE", &JOPT_READWRITE);
+	engine->RegisterEnum("JvalueType");
+	engine->RegisterEnumValue("JvalueType", "JVALUE_TYPE_UNDEFINED", JVALUE_TYPE_UNDEFINED);
+	engine->RegisterEnumValue("JvalueType", "JVALUE_TYPE_OBJECT", JVALUE_TYPE_OBJECT);
+	engine->RegisterEnumValue("JvalueType", "JVALUE_TYPE_ARRAY", JVALUE_TYPE_ARRAY);
+	engine->RegisterEnumValue("JvalueType", "JVALUE_TYPE_STRING", JVALUE_TYPE_STRING);
+	engine->RegisterEnumValue("JvalueType", "JVALUE_TYPE_NUMBER", JVALUE_TYPE_NUMBER);
+	engine->RegisterEnumValue("JvalueType", "JVALUE_TYPE_BOOLEAN", JVALUE_TYPE_BOOLEAN);
+	engine->RegisterEnumValue("JvalueType", "JVALUE_TYPE_NULL", JVALUE_TYPE_NULL);
+
 
 	r = RegisterObject<JValue>("JValue", engine, asOBJ_REF | asOBJ_GC);
 	r = engine->RegisterObjectMethod("JValue", "bool opEquals(const JValue &in other) const", asMETHOD(JValue, Equals), thisCall); assert(r >= 0);
@@ -1262,8 +1550,26 @@ void RegisterJValue(asIScriptEngine* engine)
 	r = engine->RegisterObjectMethod("JValue", "double GetDouble() const", asMETHOD(JValue, GetDouble), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "string& ToString() const", asMETHOD(JValue, ToString), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "string& ToString(int indent) const", asMETHOD(JValue, ToStringI), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "void SaveToFile(string& in path) ", asMETHOD(JValue, SaveToFile), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "void SaveToFile(string& in path, int indent) ", asMETHOD(JValue, SaveToFileI), thisCall); assert(r >= 0);
 	//r = engine->RegisterObjectMethod("JValue", "bool Deserialize(?&out)", asFUNCTION(JValue::DeserializeC), asCALL_GENERIC); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "bool Deserialize(?&in)", asMETHOD(JValue, Deserialize), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool Set(string&in key, ?&in)", asMETHOD(JValue, SetByKey), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool SetByIndex(uint index, ?&in)", asMETHOD(JValue, SetByIndex), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool SetByPath(string&in key, ?&in)", asMETHOD(JValue, SetByPath), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool SetNull(string&in key)", asMETHOD(JValue, SetByKeyNull), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool SetNullByIndex(uint index)", asMETHOD(JValue, SetByIndexNull), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool SetNullByPath(string&in key)", asMETHOD(JValue, SetByPathNull), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool Add(?&in)", asMETHOD(JValue, Add), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool AddNull(?&in)", asMETHOD(JValue, AddNull), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool Remove(string&in key)", asMETHOD(JValue, RemoveByKey), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool RemoveByIndex(uint index)", asMETHOD(JValue, RemoveByIndex), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool RemoveByPath(string&in key)", asMETHOD(JValue, RemoveByPath), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "uint Count()", asMETHOD(JValue, Count), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "array<string>& GetKeys()", asMETHOD(JValue, GetKeys), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "JvalueType GetType()", asMETHOD(JValue, GetType), thisCall); assert(r >= 0);
+
+
 	//r = engine->RegisterObjectMethod("JValue", "bool Deserialize(?&out)", asMETHOD(JValue, DeserializePlus), thisCall); assert(r >= 0);
 
 

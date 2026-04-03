@@ -29,11 +29,20 @@ void* SvenEnhancerAs::getGlobals()
 JValue* SvenEnhancerAs::Json_ParseFromFile(CString& input) {
 	this->AddRef();
 	std::string jsonString = input.c_str();
-	
+	if (jsonString.ends_with(".as"))
+	{
+		return nullptr;
+	}
+	std::filesystem::path _path(jsonString);
+	std::filesystem::path rootPath = "./svencoop";
+
+	std::filesystem::path full = std::filesystem::weakly_canonical(rootPath / _path);
+
 	try {
-		std::ifstream fStream(jsonString);
-		nlohmann::json data = nlohmann::json::parse(fStream, nullptr, true, true);
-		return new JValue(data);
+		auto jv = new JValue();
+		std::ifstream fStream(full);
+		jv->json = nlohmann::json::parse(fStream, nullptr, true, true);
+		return jv;
 	}
 	catch (const nlohmann::json::parse_error& e)
 	{
@@ -47,8 +56,9 @@ JValue* SvenEnhancerAs::Json_Parse(CString& input) {
 	this->AddRef();
 	std::string jsonString = input.c_str();
 	try {
-		nlohmann::json data = nlohmann::json::parse(jsonString, nullptr, true, true);
-		return new JValue(data);
+		auto jv = new JValue();
+		jv->json = nlohmann::json::parse(jsonString, nullptr, true, true);
+		return jv;
 
 	}
 	catch (const nlohmann::json::parse_error& e)

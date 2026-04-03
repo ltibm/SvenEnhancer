@@ -1,5 +1,5 @@
 void Sanane(){
-	
+	g_EngineFuncs.ServerPrint("Samanye\r\n");    
 }
 
 class AClass{
@@ -22,6 +22,7 @@ void PluginInit()
 	JsonDeserializeTestArray();
 	JsonDictTest();
 	JsonWithConfig();
+	JsonFileTest();
 }
 void GlobalsTest()
 {
@@ -206,4 +207,17 @@ void JsonWithConfig()
 	g_EngineFuncs.ServerPrint("\r\n Deserialized Json WithConfig - JsonContent \r\n");
 	g_EngineFuncs.ServerPrint(deserialized.ToString());
 	g_EngineFuncs.ServerPrint("\r\n");
+}
+
+void JsonFileTest()
+{
+	JValue@ inputJson = SE.JsonParseFromFile("scripts/plugins/store/json_input.json");
+	inputJson.Set("age", 999);
+	array<string> keys = inputJson.GetKeys();
+	inputJson.Set("keys", keys);
+	JValue@ myPath = inputJson.Path("/path");
+	myPath.Set("sub", 266);
+	inputJson.Set("path", @myPath);
+	inputJson.SaveToFile("scripts/plugins/store/json_output.json", 4);
+	g_EngineFuncs.ServerPrint("\r\n Json Read from file and Save to file completed \r\n");
 }

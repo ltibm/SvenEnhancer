@@ -68,7 +68,8 @@ void RegisterMysqlSymbols()
 	MysqlFn.escape_string = GetSymbol<decltype(&mysql_real_escape_string)>(mysqlHandle, "mysql_real_escape_string");
 	MysqlFn.escape_string_quote = GetSymbol<decltype(&mysql_real_escape_string_quote)>(mysqlHandle, "mysql_real_escape_string_quote");
 	MysqlFn.ping = GetSymbol<decltype(&mysql_ping)>(mysqlHandle, "mysql_ping");
-	MysqlFn.loaded = MysqlFn.init && MysqlFn.real_connect && MysqlFn._close && MysqlFn.query && MysqlFn.error && MysqlFn.ping;
+	MysqlFn.use_result = GetSymbol<decltype(&mysql_use_result)>(mysqlHandle, "mysql_use_result");
+	MysqlFn.loaded = MysqlFn.init && MysqlFn.real_connect && MysqlFn._close && MysqlFn.query && MysqlFn.error && MysqlFn.ping && MysqlFn.use_result;
 }
 
 void RegisterMysqlAngelScript(asIScriptEngine* engine) {
@@ -124,6 +125,8 @@ void RegisterMysqlAngelScript(asIScriptEngine* engine) {
 	r = engine->RegisterObjectMethod("MySqlStoreResult", "void Free()", asMETHOD(MySqlStoreResult, Free), asCALL_THISCALL); assert(r >= 0);
 	r = engine->RegisterObjectMethod("MySqlStoreResult", "MySqlRow@ FetchRow()", asMETHOD(MySqlStoreResult, FetchRow), asCALL_THISCALL); assert(r >= 0);
 	r = engine->RegisterObjectMethod("MySqlStoreResult", "int GetFieldIndex(string&in name)", asMETHOD(MySqlStoreResult, GetFieldIndexA), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("MySqlStoreResult", "int NumRows()", asMETHOD(MySqlStoreResult, NumRows), asCALL_THISCALL); assert(r >= 0);
+
 
 	r = RegisterObject<MySqlConnection>("MySqlConnection", engine, asOBJ_REF | asOBJ_GC);
 	r = engine->RegisterObjectMethod("MySqlConnection", "bool Open() const", asMETHOD(MySqlConnection, Open), asCALL_THISCALL); assert(r >= 0);
@@ -132,7 +135,7 @@ void RegisterMysqlAngelScript(asIScriptEngine* engine) {
 	r = engine->RegisterObjectMethod("MySqlConnection", "void Close()", asMETHOD(MySqlConnection, Close), asCALL_THISCALL); assert(r >= 0);
 	r = engine->RegisterObjectMethod("MySqlConnection", "bool Query(string& in query) const", asMETHOD(MySqlConnection, Query), asCALL_THISCALL); assert(r >= 0);
 	r = engine->RegisterObjectMethod("MySqlConnection", "int AffectedRows() const", asMETHOD(MySqlConnection, AffectedRows), asCALL_THISCALL); assert(r >= 0);
-	r = engine->RegisterObjectMethod("MySqlConnection", "MySqlStoreResult@ StoreResult()", asMETHOD(MySqlConnection, StoreResult), asCALL_THISCALL); assert(r >= 0);
+	r = engine->RegisterObjectMethod("MySqlConnection", "MySqlStoreResult@ StoreResult(bool storeAllData = false)", asMETHOD(MySqlConnection, StoreResult), asCALL_THISCALL); assert(r >= 0);
 	r = engine->RegisterObjectMethod("MySqlConnection", "string& Escape(string&in input) const", asMETHOD(MySqlConnection, Escape), asCALL_THISCALL); assert(r >= 0);
 	r = engine->RegisterObjectMethod("MySqlConnection", "string& EscapeQuote(string&in input, char quote) const", asMETHOD(MySqlConnection, EscapeQuote), asCALL_THISCALL); assert(r >= 0);
 
@@ -254,12 +257,12 @@ CString* MySqlConnection::EscapeQuote(CString& input, unsigned char quote)
 	esc->assign(escaped, len);
 	return esc;
 }
-MySqlStoreResult* MySqlConnection::StoreResult()
+MySqlStoreResult* MySqlConnection::StoreResult(bool storeAllData)
 {
-	auto result = MysqlFn.store_result(this->connection);
+	auto result = storeAllData ? MysqlFn.store_result(this->connection) : MysqlFn.use_result(this->connection);
 	if (!result)
 		return nullptr;
-	MySqlStoreResult* sr = new MySqlStoreResult(result);
+	MySqlStoreResult* sr = new MySqlStoreResult(result, storeAllData);
 	return sr;
 
 }
@@ -345,9 +348,10 @@ void MySqlConnectionConfig::Destruct(MySqlConnectionConfig* item) {
 }
 
 
-MySqlStoreResult::MySqlStoreResult(MYSQL_RES* res)
+MySqlStoreResult::MySqlStoreResult(MYSQL_RES* res, bool storeAllData)
 {
 	this->res = res;
+	this->StoreAllData = storeAllData;
 	if (res)
 	{
 		std::unordered_map<std::string, int> colIndex;
@@ -386,6 +390,14 @@ int MySqlStoreResult::GetFieldIndexA(CString& name)
 	std::string _name = name.c_str();
 	return this->GetFieldIndex(_name);
 }
+
+int MySqlStoreResult::NumRows()
+{
+	if (!this->res || !this->StoreAllData)
+		return -1;
+	return MysqlFn.num_rows(this->res);
+}
+
 MySqlRow* MySqlStoreResult::FetchRow()
 {
 	if (!this->res)

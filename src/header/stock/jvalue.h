@@ -32,11 +32,39 @@ public:
 	bool Equals(const JValue& other);
 	CString* ToString();
 	CString* ToStringI(int indent);
+	void SaveToFile(CString& path);
+	void SaveToFileI(CString& path, int indent);
+	//bool Set(void* obj, int typeId);
+	//void SetNull();
+	//For object
+	bool SetByKey(CString& key, void* obj, int typeId);
+	bool SetByPath(CString& key, void* obj, int typeId);
+	bool SetByKeyNull(CString& key);
+	bool SetByPathNull(CString& key);
+	bool RemoveByKey(CString& key);
+	bool RemoveByIndex(size_t index);
+	bool RemoveByPath(CString& key);
+
+	//For array
+	bool SetByIndex(size_t index, void* obj, int typeId);
+	bool SetByIndexNull(size_t index);
+
+	//For array
+	bool Add(void* obj, int typeId);
+	//For Array
+	bool AddNull();
 	void Clear();
+	void* GetKeys();
+	size_t Count();
 	~JValue();
 	bool operator==(const JValue& other);
-private:
+	//nlohmann::json& json;
 	nlohmann::json json;
+	JValue* parent = nullptr;
+	asITypeInfo* GetMyTypeInfo();
+
+private:
+	asITypeInfo* myTypeInfo = nullptr;
 	nlohmann::json FillFromObjectPrv(void* obj, asITypeInfo* type, int otherTypeId = 0, int depth = 0);
 	int curDepth = 0;
 };

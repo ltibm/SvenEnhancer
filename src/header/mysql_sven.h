@@ -30,6 +30,8 @@ struct Mysql
     decltype(&mysql_real_escape_string) escape_string;
     decltype(&mysql_real_escape_string_quote) escape_string_quote;
     decltype(&mysql_ping) ping;
+    decltype(&mysql_use_result) use_result;
+
 };
 static Mysql MysqlFn;
 class MySqlStoreResult;
@@ -37,14 +39,16 @@ class MySqlRow;
 
 class MySqlStoreResult : public CASBaseGCObject {
 public:
-    MySqlStoreResult(MYSQL_RES* res);
+    MySqlStoreResult(MYSQL_RES* res, bool storeAllData);
     ~MySqlStoreResult();
     void Free();
     MySqlRow* FetchRow();
     int GetFieldIndex(std::string name);
     int GetFieldIndexA(CString& name);
+    int NumRows();
 private:
     friend class MySqlRow;
+    bool StoreAllData;
     std::unordered_map<std::string, int> mappedFields;
     MYSQL_RES* res;
 };
@@ -82,7 +86,7 @@ public:
     bool Query(CString* query);
     int AffectedRows();
     CString* GetError();
-    MySqlStoreResult* StoreResult();
+    MySqlStoreResult* StoreResult(bool storeAllData);
     MySqlConnectionConfig* config = nullptr;
     CString* Escape(CString& input);
     CString* EscapeQuote(CString& input, unsigned char quote);

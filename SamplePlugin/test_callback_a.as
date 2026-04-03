@@ -29,3 +29,7 @@ CallbackItem@ TestChangeMap(string&in name, any@ data = null, dictionary@ dict =
 	item.ReturnString = "This is return string";
 	return item;
 }
+void PluginExit()
+{
+	SE.PluginExit();
+}

@@ -21,3 +21,7 @@ void ModuleReady()
 		g_EngineFuncs.ServerPrint(SE.Interpolate("\r\n Result Code: {returnCode}, Result String: {returnString}\r\n", {{"returnCode", callResult.ReturnCode}, {"returnString", callResult.ReturnString}}));
 	}
 }
+void PluginExit()
+{
+	SE.PluginExit();
+}

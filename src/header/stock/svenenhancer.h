@@ -33,3 +33,5 @@ namespace std {
 #include <jvalue.h>
 #include <moduledata.h>
 #include <callbackmethod.h>
+#include <curlfn.h>
+#include <rest.h>

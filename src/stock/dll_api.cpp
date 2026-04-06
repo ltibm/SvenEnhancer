@@ -34,23 +34,25 @@
 #include "asext_api.h"
 #include "angelscript_addon.h"
 #include <angelscript_expansion.h>
+#include <rest.h>
 
 #define CALL_ANGELSCRIPT(pfn, ...) if (ASEXT_CallHook){(*ASEXT_CallHook)(g_AngelHook.pfn, 0, __VA_ARGS__);}
 
 #pragma region PreHooks
-
-void ParmsNewLevel();
-void ServerDeactivate();
 static bool s_HookedFlag = false;
-void ServerDeactivate()
+void SV_StartFrame(void) {
+	RestClient::RestFrame();
+	SET_META_RESULT(MRES_IGNORED);
+}
+
+ void ServerDeactivate(void)
 {
 	ServerDeactivateAS();
 	ClearEntityData();
 	Angelscript_ServerDeactivate();
 	SET_META_RESULT(MRES_IGNORED);
 }
-static void ServerActivate(edict_t* pEdictList, int edictCount, int clientMax) {
-
+ void ServerActivate(edict_t* pEdictList, int edictCount, int clientMax) {
 	ServerActivateAS();
 	Angelscript_ServerActivate(pEdictList, edictCount, clientMax);
 	if (s_HookedFlag) {
@@ -62,14 +64,14 @@ static void ServerActivate(edict_t* pEdictList, int edictCount, int clientMax) {
 	s_HookedFlag = true;
 	SET_META_RESULT(MRES_HANDLED);
 }
-static void ClientCommand(edict_t* pEntity) {
+ void ClientCommand(edict_t* pEntity) {
 	if (!pEntity->pvPrivateData) {
 		SET_META_RESULT(MRES_IGNORED);
 		return;
 	}
 	SET_META_RESULT(MRES_IGNORED);
 }
-static void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer) {
+ void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer) {
 	SET_META_RESULT(MRES_IGNORED);
 }
 static DLL_FUNCTIONS gFunctionTable = {
@@ -103,7 +105,7 @@ static DLL_FUNCTIONS gFunctionTable = {
 	NULL,					// pfnPlayerPreThink
 	NULL,					// pfnPlayerPostThink
 
-	NULL,					// pfnStartFrame
+	SV_StartFrame, // pfnStartFrame
 	NULL,					// pfnParmsNewLevel
 	NULL,					// pfnParmsChangeLevel
 
@@ -147,15 +149,14 @@ C_DLLEXPORT int GetEntityAPI2(DLL_FUNCTIONS* pFunctionTable,
 		return(FALSE);
 	}
 	memcpy(pFunctionTable, &gFunctionTable, sizeof(DLL_FUNCTIONS));
-	return(TRUE);
+
+
+	return TRUE;
 }
 #pragma endregion
 
 
-void ParmsNewLevel()
-{
-	printf("new \r\n");
-}
+
 
 #pragma region PostHook
 static void GameInitPost() {
@@ -240,6 +241,6 @@ C_DLLEXPORT int GetEntityAPI2_Post(DLL_FUNCTIONS* pFunctionTable,
 		return(FALSE);
 	}
 	memcpy(pFunctionTable, &gFunctionTable_Post, sizeof(DLL_FUNCTIONS));
-	return(TRUE);
+	return TRUE;
 }
 #pragma endregion

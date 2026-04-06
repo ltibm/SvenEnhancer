@@ -96,7 +96,7 @@ void RegisterMysqlAngelScript(asIScriptEngine* engine) {
 	//engine->RegisterObjectProperty("MySqlConnectionConfig", "string Database", offsetof(MySqlConnectionConfig, database));
 	engine->RegisterObjectProperty("MySqlConnectionConfig", "int Port", offsetof(MySqlConnectionConfig, port));
 
-	r = RegisterObject<MySqlRow>("MySqlRow", engine, asOBJ_REF | asOBJ_GC);
+	r = RegisterObject<MySqlRow>("MySqlRow", engine, asOBJ_REF | asOBJ_GC); assert(r >= 0);
 	r = engine->RegisterObjectMethod("MySqlRow", "string& GetString(string& in name) const", asMETHOD(MySqlRow, GetString), asCALL_THISCALL); assert(r >= 0);
 	r = engine->RegisterObjectMethod("MySqlRow", "string& GetString(int index) const", asMETHOD(MySqlRow, GetStringIdx), asCALL_THISCALL); assert(r >= 0);
 

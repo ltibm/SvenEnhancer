@@ -1,8 +1,8 @@
 #pragma once
 
-#define SE_VERSION_FLOAT 0.45
-#define SE_VERSION "0.45"
-#define SE_DATE "02.04.2026"
+#define SE_VERSION_FLOAT 0.60
+#define SE_VERSION "0.6"
+#define SE_DATE "06.04.2026"
 #define SE_PRINT(msg) \
     g_engfuncs.pfnServerPrint("[Sven Enhancer] " msg "\r\n")
 

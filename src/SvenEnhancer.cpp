@@ -32,7 +32,7 @@ plugin_info_t Plugin_info = {
 	SE_VERSION,	// version
 	SE_DATE,	// date
 	"S!",	// author
-	"https://github.com/ibm-p/SvenEnhancer-metamod",	// url
+	"https://github.com/ltibm/SvenEnhancer",	// url
 	"SvenEnhancer",	// logtag, all caps please
 	PT_ANYTIME,	// (when) loadable
 	PT_STARTUP,	// (when) unloadable
@@ -115,13 +115,16 @@ extern "C" {
 			return FALSE;
 		}
 		IMPORT_ASEXT_API(asext);
+		InstallEngineHook();
 		RegisterAngelScriptMethods();
 		AngelScript_Expand();
 		RegisterAngelScriptHooks();
 		RegisterMysql();
+		InitCurl();
 
-		RegisterSVCvar("svenenhancer_version", SE_VERSION_FLOAT);
-
+		char msg[100];
+		sprintf(msg, "\nSven Enhancer: v%.2f\n", SE_VERSION_FLOAT);
+		SERVER_PRINT(msg);
 		return TRUE;
 	}
 

@@ -25,7 +25,8 @@ void AngelScript_Expand() {
 		RegisterJValue(engine);
 
 		RegisterMysqlAngelScript(engine);
-
+		//Register RestClient
+		RestClient::RegisterAngelScript(pASDoc, engine);
 		RegisterCallBackItem(pASDoc, engine);
 		RegisterCallbackMethods(pASDoc, engine);
 
@@ -45,7 +46,9 @@ void AngelScript_Expand() {
 		engine->RegisterObjectMethod("SvenEnhancer", "bool MySql_Loaded()", asMETHOD(SvenEnhancerAs, MySql_Loaded), asCALL_THISCALL);
 		engine->RegisterObjectMethod("SvenEnhancer", "MySqlConnection@ MySql_CreateConnection(MySqlConnectionConfig& in config)", asMETHOD(SvenEnhancerAs, MySqlConnection_Create), asCALL_THISCALL);
 		engine->RegisterObjectMethod("SvenEnhancer", "void PluginExit()", asMETHOD(SvenEnhancerAs, PluginExit), asCALL_THISCALL);
-
+		engine->RegisterObjectMethod("SvenEnhancer", "string& HMAC_SHA1(string& in key, string& in data) const", asMETHOD(SvenEnhancerAs, HMAC_SHA1AS), asCALL_THISCALL);
+		engine->RegisterObjectMethod("SvenEnhancer", "string& HMAC_SHA256(string& in key, string& in data) const", asMETHOD(SvenEnhancerAs, HMAC_SHA256AS), asCALL_THISCALL);
+		engine->RegisterObjectMethod("SvenEnhancer", "string& MD5(string& in data) const", asMETHOD(SvenEnhancerAs, MD5AS), asCALL_THISCALL);
 
 		//engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParseFromObject(ref @)", asMETHOD(SvenEnhancerAs, Json_ParseObject), asCALL_THISCALL);
 		

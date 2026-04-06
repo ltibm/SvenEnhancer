@@ -48,7 +48,7 @@ enginefuncs_t meta_engfuncs = {
 	NULL,						// pfnPrecacheModel()
 	NULL,						// pfnPrecacheSound()
 	NULL,						// pfnSetModel()
-	SV_ModelIndex,						// pfnModelIndex()
+	NULL,						// pfnModelIndex()
 	NULL,						// pfnModelFrames()
 
 	NULL,						// pfnSetSize()
@@ -268,7 +268,6 @@ C_DLLEXPORT int GetEngineFunctions(enginefuncs_t* pengfuncsFromEngine,
 		return false;
 	}
 	memcpy(pengfuncsFromEngine, &meta_engfuncs, sizeof(enginefuncs_t));
-
-	return InstallEngineHook();
+	return TRUE;
 }
 #pragma endregion

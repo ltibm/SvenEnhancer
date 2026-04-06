@@ -35,3 +35,4 @@ void RegisterCallBackItem(CASDocumentation* pASDoc, asIScriptEngine* engine)
 	reg = asFUNCTION(CallbackItem::Factory);
 	ASEXT_RegisterObjectBehaviourEx(pASDoc, "Factory", "CallbackItem", asBEHAVE_FACTORY, "CallbackItem@ CallbackItem()", &reg, asCALL_CDECL);
 }
+ 

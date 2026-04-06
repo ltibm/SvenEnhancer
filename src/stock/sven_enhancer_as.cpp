@@ -112,6 +112,21 @@ CString* SvenEnhancerAs::Version() {
 	res->assign(SE_VERSION, strlen(SE_VERSION));
 	return res;
 }
+CString* SvenEnhancerAs::HMAC_SHA1AS(CString& key, CString& data)
+{
+	auto res = RestUtils::HMAC_SHA1(key.c_str(), data.c_str());
+	return CreateString(res.c_str());
+}
+CString* SvenEnhancerAs::HMAC_SHA256AS(CString& key, CString& data)
+{
+	auto res = RestUtils::HMAC_SHA256(key.c_str(), data.c_str());
+	return CreateString(res.c_str());
+}
+CString* SvenEnhancerAs::MD5AS(CString& data)
+{
+	auto res = RestUtils::ToMD5(data.c_str());
+	return CreateString(res.c_str());
+}
 CString* SvenEnhancerAs::Interpolate(CString& input, void* dict)
 {
 	std::locale old;

@@ -15,6 +15,9 @@ public:
 	bool MySql_Loaded();
 	CString* Interpolate(CString& input, void* dict);
 	CString* Version();
+	CString* HMAC_SHA256AS(CString& key, CString& data);
+	CString* HMAC_SHA1AS(CString& key, CString& data);
+	CString* MD5AS(CString& data);
 	RefObject* pDictionary = nullptr;
 	MySqlConnection* MySqlConnection_Create(MySqlConnectionConfig& config);
 	void* getGlobals();

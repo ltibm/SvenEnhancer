@@ -1,6 +1,8 @@
 # Sven Enhancer
 Sven Enhancer is a Metamod plugin for SvenCoop, this plugin is tested on Windows 11 and Ubuntu(With WSL).
 
+# REST(WebRequest) Support
+[SEE](https://github.com/ltibm/SvenEnhancer/blob/master/Rest.md)
 
 # MySql Supports
 [SEE](https://github.com/ltibm/SvenEnhancer/blob/master/MySql.md)

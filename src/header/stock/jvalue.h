@@ -16,6 +16,7 @@ public:
 	JValue(nlohmann::json& data, int _curDepth);
 	unsigned int GetType();
 	bool ContainsKey(CString& key);
+	bool ContainsKeyB(CString& key, bool isPath);
 	JValue* GetByKey(CString& key);
 	JValue* Path(CString& key);
 	CString* GetString();

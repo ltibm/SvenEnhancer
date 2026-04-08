@@ -41,6 +41,28 @@ bool JValue::ContainsKey(CString& key)
 	return json.contains(str);
 }
 
+bool JValue::ContainsKeyB(CString& key, bool isPath)
+{
+	try
+	{
+		if (!isPath)
+		{
+			std::string str = key.c_str();
+			return json.contains(str);
+		}
+		else
+		{
+			std::string str = std::string(key.c_str());
+			return json.contains(nlohmann::json::json_pointer(str));
+		}
+	}
+	catch (const std::exception&)
+	{
+			
+	}
+	return false;
+}
+
 JValue* JValue::GetByKey(CString& key)
 {
 	std::string str = key.c_str();
@@ -1590,6 +1612,7 @@ void RegisterJValue(asIScriptEngine* engine)
 	r = engine->RegisterObjectMethod("JValue", "string& GetString(string& in name, bool isPath = false) const", asMETHOD(JValue, GetStringB), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "JValue@ GetByKey(string& in input) const", asMETHOD(JValue, GetByKey), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "bool ContainsKey(string& in input) const", asMETHOD(JValue, ContainsKey), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool ContainsKey(string& in input, bool isPath) const", asMETHOD(JValue, ContainsKeyB), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "JValue@ Path(string &in input) const", asMETHOD(JValue, Path), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "uint Size() const", asMETHOD(JValue, Size), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "JValue@ At(uint index) const", asMETHOD(JValue, At), thisCall); assert(r >= 0);

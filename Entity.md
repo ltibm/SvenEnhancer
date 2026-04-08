@@ -22,6 +22,8 @@ dictionary@+ GetData(int index);
 ```
 
 # Sample Usage
+
+```angelscript
 CBaseEntity@ entity = GetEntity(12345);
 dictionary@ data = SE_ENT.GetData(@entity);
 
@@ -38,4 +40,6 @@ SE_ENT.SetPDataInt(@entity, 12345, 10, 12);
 
 //Reading PDATA
 int pdata = SE_ENT.SetPDataInt(@entity, 12345);
+```
+
 

@@ -22,10 +22,11 @@ void QueryUserCountry(const string &in sNick, const string &in sIp)
 			JValue@ json = context.Response.GetJsonBody();
 			if(@json !is null)
 			{
-				JValue@ path = json.Path("/country");
-				if(@path !is null)
+				//JValue@ path = json.Path("/country");
+				//After v0.7 you can now use this
+				string country = json.GetString("/country", true);
+				if(country != "")
 				{
-					string country = path.GetString();
 					string nick;
 					context.UserData.retrieve(nick);
 					string message = SE.Interpolate("{nick} Connected from {country}\n", {{"nick", nick}, {"country", country}});

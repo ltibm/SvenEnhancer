@@ -23,6 +23,7 @@ void PluginInit()
 	JsonDictTest();
 	JsonWithConfig();
 	JsonFileTest();
+	JsonNewFnTest();
 }
 void GlobalsTest()
 {
@@ -220,4 +221,15 @@ void JsonFileTest()
 	inputJson.Set("path", @myPath);
 	inputJson.SaveToFile("scripts/plugins/store/json_output.json", 4);
 	g_EngineFuncs.ServerPrint("\r\n Json Read from file and Save to file completed \r\n");
+}
+
+void JsonNewFnTest()
+{
+	string jsonBody = "{\"age\":30,\"name\":\"Jan\",\"skills\":[\"music\",\"book\",\"swim\"], \"vars\": {\"a\": 1}}";
+	JValue@ json = SE.JsonParse(jsonBody);
+	string name =  json.Path("/vars/a").GetInt(); //or json.GetInt("/vars/a", true);
+	name =  json.GetInt("/vars/a", true);
+	bool contains = json.ContainsKey("name");
+	string r2 = SE.Interpolate("\r\nName: {name}\r\n", {{"name", string(contains)}});
+	g_EngineFuncs.ServerPrint(r2);
 }

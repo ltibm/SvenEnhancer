@@ -1,6 +1,6 @@
 #pragma once
 
-#define SE_VERSION_FLOAT 0.65
+#define SE_VERSION_FLOAT 0.70
 #define SE_VERSION "0.70"
 #define SE_DATE "08.04.2026"
 #define SE_PRINT(msg) \

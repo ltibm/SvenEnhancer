@@ -18,6 +18,9 @@ public:
 	CString* HMAC_SHA256AS(CString& key, CString& data);
 	CString* HMAC_SHA1AS(CString& key, CString& data);
 	CString* MD5AS(CString& data);
+	CString* BASE64Encode(CString& data);
+	CString* BASE64Decode(CString& data);
+
 	RefObject* pDictionary = nullptr;
 	MySqlConnection* MySqlConnection_Create(MySqlConnectionConfig& config);
 	void* getGlobals();

@@ -56,6 +56,9 @@ void AngelScript_Expand() {
 		engine->RegisterObjectMethod("SvenEnhancer", "string& HMAC_SHA256(string& in key, string& in data) const", asMETHOD(SvenEnhancerAs, HMAC_SHA256AS), asCALL_THISCALL);
 		engine->RegisterObjectMethod("SvenEnhancer", "string& MD5(string& in data) const", asMETHOD(SvenEnhancerAs, MD5AS), asCALL_THISCALL);
 
+		engine->RegisterObjectMethod("SvenEnhancer", "string& Base64_Encode(string& in data) const", asMETHOD(SvenEnhancerAs, BASE64Encode), asCALL_THISCALL);
+		engine->RegisterObjectMethod("SvenEnhancer", "string& Base64_Decode(string& in data) const", asMETHOD(SvenEnhancerAs, BASE64Decode), asCALL_THISCALL);
+
 		//engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParseFromObject(ref @)", asMETHOD(SvenEnhancerAs, Json_ParseObject), asCALL_THISCALL);
 
 		engine->RegisterObjectMethod(

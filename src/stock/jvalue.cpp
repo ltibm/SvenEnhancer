@@ -66,30 +66,58 @@ JValue* JValue::Path(CString& key)
 	{
 		return nullptr;
 	}
-
 }
 
 CString* JValue::GetString()
 {
-	std::string str = json.get<std::string>();
+	std::string str = TryGetJson<std::string>();
 	CString* cstr = new CString();
 	cstr->assign(str.c_str(), str.length());
 	return cstr;
 }
 
+CString* JValue::GetStringB(CString& key, bool isPath)
+{	
+	auto str = GetValueOrDefault<std::string>(key.c_str(), isPath);
+	return CreateString(str.c_str());
+}
+
 asINT32 JValue::GetInt()
 {
-	return json.get<asINT32>();
+	return TryGetJson<asINT32>();
+}
+
+asINT32 JValue::GetIntB(CString& key, bool isPath)
+{
+	return GetValueOrDefault<asINT32>(key.c_str(), isPath);
+}
+
+float JValue::GetFloat()
+{
+	return TryGetJson<float>();
+}
+
+float JValue::GetFloatB(CString& key, bool isPath)
+{
+	return GetValueOrDefault<float>(key.c_str(), isPath);
 }
 
 double JValue::GetDouble()
 {
-	return json.get<double>();
+	return TryGetJson<double>();
+}
+double JValue::GetDoubleB(CString& key, bool isPath)
+{
+	return GetValueOrDefault<double>(key.c_str(), isPath);
 }
 
 bool JValue::GetBool()
 {
-	return json.get<bool>();
+	return TryGetJson<bool>();
+}
+bool JValue::GetBoolB(CString& key, bool isPath)
+{
+	return GetValueOrDefault<bool>(key.c_str(), isPath);
 }
 template <typename T>
 T TransformValue(const nlohmann::json& jvalue) {
@@ -1211,6 +1239,25 @@ CString* JValue::ToStringI(int indent)
 	return str;
 }
 
+CString* JValue::ToStringB(CString& key, bool isPath, int indent)
+{
+	if (key.size() == 0)
+		return ToStringI(indent);
+	try
+	{
+		nlohmann::json& jv = isPath ? json.at(nlohmann::json::json_pointer(key.c_str())) : json.at(key.c_str());
+		CString* str = new CString();
+		auto dumped = jv.dump(indent);
+		str->assign(dumped.c_str(), dumped.size());
+		return str;
+	}
+	catch (const std::exception&)
+	{
+			
+	}
+	return CreateString("");
+}
+
 void JValue::SaveToFile(CString& path)
 {
 	SaveToFileI(path, -1);
@@ -1540,16 +1587,24 @@ void RegisterJValue(asIScriptEngine* engine)
 	r = RegisterObject<JValue>("JValue", engine, asOBJ_REF | asOBJ_GC);
 	r = engine->RegisterObjectMethod("JValue", "bool opEquals(const JValue &in other) const", asMETHOD(JValue, Equals), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "string& GetString() const", asMETHOD(JValue, GetString), thisCall); assert(r >= 0);
-	r = engine->RegisterObjectMethod("JValue", "JValue@ GetByKey(string &in input) const", asMETHOD(JValue, GetByKey), thisCall); assert(r >= 0);
-	r = engine->RegisterObjectMethod("JValue", "bool ContainsKey(string &in input) const", asMETHOD(JValue, ContainsKey), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "string& GetString(string& in name, bool isPath = false) const", asMETHOD(JValue, GetStringB), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "JValue@ GetByKey(string& in input) const", asMETHOD(JValue, GetByKey), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool ContainsKey(string& in input) const", asMETHOD(JValue, ContainsKey), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "JValue@ Path(string &in input) const", asMETHOD(JValue, Path), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "uint Size() const", asMETHOD(JValue, Size), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "JValue@ At(uint index) const", asMETHOD(JValue, At), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "bool GetBool() const", asMETHOD(JValue, GetBool), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "bool GetBool(string& in name, bool isPath = false) const", asMETHOD(JValue, GetBoolB), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "int GetInt() const", asMETHOD(JValue, GetInt), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "int GetInt(string& in name, bool isPath = false) const", asMETHOD(JValue, GetIntB), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "float GetFloat() const", asMETHOD(JValue, GetFloat), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "float GetFloat(string& in name, bool isPath = false) const", asMETHOD(JValue, GetFloatB), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "double GetDouble() const", asMETHOD(JValue, GetDouble), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "double GetDouble(string& in name, bool isPath = false) const", asMETHOD(JValue, GetDoubleB), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "string& ToString() const", asMETHOD(JValue, ToString), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "string& ToString(int indent) const", asMETHOD(JValue, ToStringI), thisCall); assert(r >= 0);
+	r = engine->RegisterObjectMethod("JValue", "string& ToString(string& in name, bool isPath = false, int indent = -1) const", asMETHOD(JValue, ToStringB), thisCall); assert(r >= 0);
+
 	r = engine->RegisterObjectMethod("JValue", "void SaveToFile(string& in path) ", asMETHOD(JValue, SaveToFile), thisCall); assert(r >= 0);
 	r = engine->RegisterObjectMethod("JValue", "void SaveToFile(string& in path, int indent) ", asMETHOD(JValue, SaveToFileI), thisCall); assert(r >= 0);
 	//r = engine->RegisterObjectMethod("JValue", "bool Deserialize(?&out)", asFUNCTION(JValue::DeserializeC), asCALL_GENERIC); assert(r >= 0);

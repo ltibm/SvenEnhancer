@@ -134,6 +134,9 @@ public:
 		auto v = GetHeaderKey(index);
 		return this->GetHeader(*v);
     }
+    bool IsSuccessStatusCode() const {
+        return StatusCode >= 200 && StatusCode < 300;
+	}
     JValue* GetJsonBody() const;
     RestResponse();
     ~RestResponse();

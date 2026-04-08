@@ -12,8 +12,8 @@ void RestClient::RegisterAngelScript(CASDocumentation* pASDoc, asIScriptEngine* 
     r = engine->RegisterObjectMethod("RestResponse", "string& GetHeader(uint index)", asMETHOD(RestResponse, GetHeaderValue), asCALL_THISCALL); assert(r >= 0);
     r = engine->RegisterObjectMethod("RestResponse", "string& GetHeaderKey(uint index)", asMETHOD(RestResponse, GetHeaderKey), asCALL_THISCALL); assert(r >= 0);
     r = engine->RegisterObjectMethod("RestResponse", "uint HeaderCount()", asMETHOD(RestResponse, HeaderCount), asCALL_THISCALL); assert(r >= 0);
+    r = engine->RegisterObjectMethod("RestResponse", "bool IsSuccessStatusCode()", asMETHOD(RestResponse, IsSuccessStatusCode), asCALL_THISCALL); assert(r >= 0);
     r = engine->RegisterObjectMethod("RestResponse", "JValue@ GetJsonBody()", asMETHOD(RestResponse, GetJsonBody), asCALL_THISCALL); assert(r >= 0);
-
     r = RegisterObject<RestRequest>("RestRequest", engine, asOBJ_REF | asOBJ_GC); assert(r >= 0);
     r = engine->RegisterObjectProperty("RestRequest", "string Url", asOFFSET(RestRequest, Url)); assert(r >= 0);
 	r = engine->RegisterObjectBehaviour("RestRequest", asBEHAVE_FACTORY, "RestRequest@ RestRequest()", asFUNCTION(RestRequest::Factory), asCALL_CDECL); assert(r >= 0);

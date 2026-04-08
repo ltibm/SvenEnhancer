@@ -120,6 +120,16 @@ CString* SvenEnhancerAs::HMAC_SHA1AS(CString& key, CString& data)
 	auto res = RestUtils::HMAC_SHA1(key.c_str(), data.c_str());
 	return CreateString(res.c_str());
 }
+CString* SvenEnhancerAs::BASE64Encode(CString& data)
+{
+	auto res = RestUtils::Base64Encode(data.c_str());
+	return CreateString(res.c_str());
+}
+CString* SvenEnhancerAs::BASE64Decode(CString& data)
+{
+	auto res = RestUtils::Base64Decode(data.c_str());
+	return CreateString(res.c_str());
+}
 CString* SvenEnhancerAs::HMAC_SHA256AS(CString& key, CString& data)
 {
 	auto res = RestUtils::HMAC_SHA256(key.c_str(), data.c_str());

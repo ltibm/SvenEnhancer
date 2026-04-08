@@ -74,6 +74,11 @@ void SV_StartFrame(void) {
  void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer) {
 	SET_META_RESULT(MRES_IGNORED);
 }
+
+void ClientDisconnect(edict_t* pEntity) {
+	Angelscript_ClientDisconnect(pEntity);
+	SET_META_RESULT(MRES_IGNORED);
+}
 static DLL_FUNCTIONS gFunctionTable = {
 	NULL,					// pfnGameInit
 	NULL,					// pfnSpawn
@@ -94,7 +99,7 @@ static DLL_FUNCTIONS gFunctionTable = {
 	NULL,					// pfnResetGlobalState
 
 	NULL,			// pfnClientConnect
-	NULL,					// pfnClientDisconnect
+	ClientDisconnect,					// pfnClientDisconnect
 	NULL,					// pfnClientKill
 	NULL,					// pfnClientPutInServer
 	ClientCommand,					// pfnClientCommand

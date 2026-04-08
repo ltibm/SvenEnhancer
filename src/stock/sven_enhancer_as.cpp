@@ -11,7 +11,10 @@ void SvenEnhancerAs::init(){
 	asITypeInfo* dictInfo = engine->GetTypeInfoByDecl("dictionary");
 	pDictionary->type = dictInfo;
 	pDictionary->data = engine->CreateScriptObject(dictInfo);
+	engine->AddRefScriptObject(pDictionary->data, dictInfo);
 	engine->NotifyGarbageCollectorOfNewObject(pDictionary->data, dictInfo);
+
+
 }
 SvenEnhancerAs::~SvenEnhancerAs() {
 	if (pDictionary && pDictionary->data)
@@ -23,11 +26,11 @@ SvenEnhancerAs::~SvenEnhancerAs() {
 }
 void* SvenEnhancerAs::getGlobals()
 {
-	this->AddRef();
+	//this->AddRef();
 	return pDictionary->data;
 }
 JValue* SvenEnhancerAs::Json_ParseFromFile(CString& input) {
-	this->AddRef();
+	//this->AddRef();
 	std::string jsonString = input.c_str();
 	if (jsonString.ends_with(".as"))
 	{
@@ -53,7 +56,7 @@ JValue* SvenEnhancerAs::Json_ParseFromFile(CString& input) {
 }
 
 JValue* SvenEnhancerAs::Json_Parse(CString& input) {
-	this->AddRef();
+	//this->AddRef();
 	std::string jsonString = input.c_str();
 	try {
 		auto jv = new JValue();
@@ -70,7 +73,7 @@ JValue* SvenEnhancerAs::Json_Parse(CString& input) {
 }
 JValue* SvenEnhancerAs::Json_ParseObject(void* obj, asITypeInfo* type)
 {
-	this->AddRef();
+	//this->AddRef();
 	if (!obj || !type)
 		return nullptr;
 	JValue* jv = new JValue();
@@ -79,7 +82,7 @@ JValue* SvenEnhancerAs::Json_ParseObject(void* obj, asITypeInfo* type)
 }
 JValue* SvenEnhancerAs::Json_ParseObjectV2(void* obj, int typeId)
 {
-	this->AddRef();
+	//this->AddRef();
 	//Prevent crash for @class
 	if (typeId & asTYPEID_OBJHANDLE)
 		obj = *(void**)obj;
@@ -93,7 +96,7 @@ JValue* SvenEnhancerAs::Json_ParseObjectV2(void* obj, int typeId)
 }
 MySqlConnection* SvenEnhancerAs::MySqlConnection_Create(MySqlConnectionConfig& config)
 {
-	this->AddRef();
+	//this->AddRef();
 	// libmysql is requierd for this method
 	if (!MySqlConnection::Available())
 		return nullptr;
@@ -165,3 +168,138 @@ void SvenEnhancerAs::PluginExit()
 
 	}
 }
+
+SvenEnhancerEnt::SvenEnhancerEnt()
+{
+}
+SvenEnhancerEnt::~SvenEnhancerEnt()
+{
+}
+
+bool SvenEnhancerEnt::SetPDataInt(void* pThis, int offset, int value, int linuxDiff)
+{
+	return PDataSetEnt(pThis, offset, value, linuxDiff);
+}
+
+bool SvenEnhancerEnt::SetPDataUInt(void* pThis, int offset, size_t value, int linuxDiff)
+{
+	return PDataSetEnt(pThis, offset, value, linuxDiff);
+}
+bool SvenEnhancerEnt::SetPDataBool(void* pThis, int offset, bool value, int linuxDiff)
+{
+	return PDataSetEnt(pThis, offset, value, linuxDiff);
+}
+
+bool SvenEnhancerEnt::SetPDataFloat(void* pThis, int offset, float value, int linuxDiff)
+{
+	return PDataSetEnt(pThis, offset, value, linuxDiff);
+}
+
+bool SvenEnhancerEnt::SetPDataShort(void* pThis, int offset, short value, int linuxDiff)
+{
+	return PDataSetEnt(pThis, offset, value, linuxDiff);
+}
+
+bool SvenEnhancerEnt::SetPDataUShort(void* pThis, int offset, unsigned short value, int linuxDiff)
+{
+	return PDataSetEnt(pThis, offset, value, linuxDiff);
+}
+
+int SvenEnhancerEnt::GetPDataInt(void* pThis, int offset, int linuxDiff)
+{
+	int result = 0;
+	PDataGetEnt(pThis, offset, result, linuxDiff);
+	return result;
+}
+
+size_t SvenEnhancerEnt::GetPDataUInt(void* pThis, int offset, int linuxDiff)
+{
+	size_t result = 0;
+	PDataGetEnt(pThis, offset, result, linuxDiff);
+	return result;
+}
+
+bool SvenEnhancerEnt::GetPDataBool(void* pThis, int offset, int linuxDiff)
+{
+	bool result = 0;
+	PDataGetEnt(pThis, offset, result, linuxDiff);
+	return result;
+}
+
+float SvenEnhancerEnt::GetPDataFloat(void* pThis, int offset, int linuxDiff)
+{
+	float result = 0;
+	PDataGetEnt(pThis, offset, result, linuxDiff);
+	return result;
+}
+
+short SvenEnhancerEnt::GetPDataShort(void* pThis, int offset, int linuxDiff)
+{
+	short result = 0;
+	PDataGetEnt(pThis, offset, result, linuxDiff);
+	return result;
+}
+
+unsigned short SvenEnhancerEnt::GetPDataUShort(void* pThis, int offset, int linuxDiff)
+{
+	unsigned short result = 0;
+	PDataGetEnt(pThis, offset, result, linuxDiff);
+	return result;
+}
+
+void SvenEnhancerEnt::ClearPlayerData(int index)
+{
+	auto engine = GetASEngine();
+	auto dictInfo = engine->GetTypeInfoByDecl("dictionary");
+	auto it = g_PlayerData.find(index);
+	if (it != g_PlayerData.end())
+	{
+		engine->ReleaseScriptObject(it->second, dictInfo);
+		g_PlayerData.erase(it);
+	}
+}
+
+void* SvenEnhancerEnt::GetData(int index)
+{
+	if (index < 0 || index > gpGlobals->maxEntities)
+		return nullptr;
+	std::unordered_map<int, void*>& target = index <= gpGlobals->maxClients ? g_PlayerData : g_EntityData;
+	auto it = target.find(index);
+	if (it != target.end())
+		return it->second;
+	auto dict = CreateDictionary(true);
+	target[index] = dict;
+	return dict;
+}
+void* SvenEnhancerEnt::GetDataByEdict(edict_t* edict)
+{
+	if (!edict || edict->free)
+		return nullptr;
+	int key = ENTINDEX(edict);
+	return GetData(key);
+}
+
+void* SvenEnhancerEnt::GetDataByEntity(void* entity)
+{
+	if (!entity)
+		return nullptr;
+	entvars_t* pev = *((entvars_t**)((char*)entity + 4));
+	if (!pev && !pev->pContainingEntity)
+		return nullptr;
+	auto key = ENTINDEX(ENT(pev));
+	return GetData(key);
+}
+
+void SvenEnhancerEnt::ClearAllEntityData()
+{
+	auto engine = GetASEngine();
+	auto dictInfo = engine->GetTypeInfoByDecl("dictionary");
+	for (auto& [k, v] : g_EntityData)
+	{
+		engine->ReleaseScriptObject(v, dictInfo);
+	}
+	g_EntityData.clear();
+}
+
+
+

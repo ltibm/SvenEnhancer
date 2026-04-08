@@ -153,3 +153,18 @@ inline CString* CreateString(const char* text)
 	resp->assign(text, strlen(text));
 	return resp;
 }
+
+inline void* CreateDictionary(bool addRef = false)
+{
+	auto engine = GetASEngine();
+	auto pDictionary = new RefObject();
+	asITypeInfo* dictInfo = engine->GetTypeInfoByDecl("dictionary");
+	pDictionary->type = dictInfo;
+	pDictionary->data = engine->CreateScriptObject(dictInfo);
+	if (addRef)
+	{
+		engine->AddRefScriptObject(pDictionary->data, dictInfo);
+	}
+	engine->NotifyGarbageCollectorOfNewObject(pDictionary->data, dictInfo);
+	return pDictionary->data;
+}

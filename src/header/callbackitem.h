@@ -9,8 +9,15 @@ public:
 	asIScriptObject* Data = nullptr;
 	asIScriptObject* Dict = nullptr;
 	CString ReturnString;
+	inline CString* GetModuleName() {
+		CString* str = new CString();
+		str->assign(moduleName.c_str(), moduleName.size());
+		return str;
+	}
+	CallbackItem();
 	~CallbackItem();
 	static CallbackItem* Factory();
+	std::string moduleName{};
 private:
 	int m_iMode = 0;
 };

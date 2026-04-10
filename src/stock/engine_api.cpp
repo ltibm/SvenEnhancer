@@ -37,7 +37,7 @@
 
 #include <extdll.h>
 #include <meta_api.h>
-
+#include <angelscript_expansion.h>
 
 #pragma region PreHooks
 static int SV_ModelIndex(const char* m) {
@@ -94,8 +94,8 @@ enginefuncs_t meta_engfuncs = {
 	NULL,						// pfnTraceSphere()
 	NULL,						// pfnGetAimVector()
 
-	NULL,						// pfnServerCommand()
-	NULL,						// pfnServerExecute()
+	NULL,	// pfnServerCommand()
+	NULL,	// pfnServerExecute()
 	NULL,						// pfnClientCommand()
 
 	NULL,						// pfnParticleEffect()
@@ -268,6 +268,44 @@ C_DLLEXPORT int GetEngineFunctions(enginefuncs_t* pengfuncsFromEngine,
 		return false;
 	}
 	memcpy(pengfuncsFromEngine, &meta_engfuncs, sizeof(enginefuncs_t));
+
 	return TRUE;
 }
 #pragma endregion
+
+
+
+static NEW_DLL_FUNCTIONS gNewDllFunctionTable =
+{
+	// Called right before the object's memory is freed. 
+	// Calls its destructor.
+	NULL,
+	NULL,
+	NULL,
+
+	// Added 2005/08/11 (no SDK update):
+	NULL,//void(*pfnCvarValue)(const edict_t *pEnt, const char *value);
+
+	// Added 2005/11/21 (no SDK update):
+	//    value is "Bad CVAR request" on failure (i.e that user is not connected or the cvar does not exist).
+	//    value is "Bad Player" if invalid player edict.
+	NULL,//void(*pfnCvarValue2)(const edict_t *pEnt, int requestID, const char *cvarName, const char *value);
+};
+
+C_DLLEXPORT int GetNewDLLFunctions(NEW_DLL_FUNCTIONS* pNewDllFunctionTable,
+	int* interfaceVersion)
+{
+	if (!pNewDllFunctionTable) {
+		LOG_ERROR(PLID, "GetNewDLLFunctions called with null pFunctionTable");
+		return(FALSE);
+	}
+	else if (*interfaceVersion != NEW_DLL_FUNCTIONS_VERSION) {
+		LOG_ERROR(PLID, "GetNewDLLFunctions version mismatch; requested=%d ours=%d", *interfaceVersion, NEW_DLL_FUNCTIONS_VERSION);
+		//! Tell metamod what version we had, so it can figure out who is out of date.
+		*interfaceVersion = NEW_DLL_FUNCTIONS_VERSION;
+		return(FALSE);
+	}
+	memcpy(pNewDllFunctionTable, &gNewDllFunctionTable, sizeof(NEW_DLL_FUNCTIONS));
+
+	return(TRUE);
+}

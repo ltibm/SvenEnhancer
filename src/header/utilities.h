@@ -4,6 +4,20 @@ inline asIScriptEngine* GetASEngine() {
 	asIScriptEngine* engine = manager->scriptEngine;
 	return engine;
 }
+
+inline asITypeInfo* GetASGlobalTypeByName(const char* name)
+{
+	asIScriptEngine* engine = GetASEngine();
+	auto tc = engine->GetObjectTypeCount();
+	for (size_t i = 0; i < tc; i++)
+	{
+		auto type = engine->GetObjectTypeByIndex(i);
+		if (strcmp(type->GetName(), name) == 0)
+			return type;
+	}
+	return nullptr;
+}
+
 inline int AS_GetTypeId(asIScriptEngine* engine, std::string name, bool isdecl = false)
 {
 	auto r = isdecl ? engine->GetTypeInfoByDecl(name.c_str()) : engine->GetTypeInfoByName(name.c_str());
@@ -46,6 +60,8 @@ inline bool isNumericType(int typeId)
 inline void* Array_At(CScriptArray* array, asUINT index)
 {
 	auto size = array->size();
+	if (size <= 0)
+		return nullptr;
 	auto elementsize = array->m_unk5;
 	if (array->m_buffer == 0 || index >= array->m_buffer->size())
 	{
@@ -72,6 +88,7 @@ inline cvar_t* RegisterSVCvar(const char* cvar_name, float cvar_value)
 	sprintf(cvar.string, "%f", cvar_value);
 	strcpy(cvar.name, cvar_name);
 	g_engfuncs.pfnCVarRegister(&cvar);
+
 	return g_engfuncs.pfnCVarGetPointer(cvar_name);
 }
 

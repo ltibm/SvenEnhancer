@@ -47,11 +47,13 @@ class CDictHelper {
 public:
 	CDictHelper(void* base);
 	CScriptArray* getKeys();
+	std::vector<std::string> getKeysV2();
 	CScriptDictValue* getByName(CString& name);
 	CString& getString(CString& name);
 	void setByName(CString& name, void* obj, int typeId);
 	bool keyExists(CString& name);
 	std::string getStdString(CString& name, std::string fmt);
+	size_t Size();
 private:
 	void* basePtr;
 	asIScriptEngine* engine;

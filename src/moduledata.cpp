@@ -31,6 +31,11 @@ ModuleData* findModuleByName(std::string name)
 
 void deleteModuleData(asIScriptModule* module)
 {
+	//Remove all register clientcmds
+	g_SE->UnregisterClientCmdsByModule(module);
+	//Remove all register servercmds
+	g_SE->UnregisterServerCmdsByModule(module);
+	g_SEEvent.ClearEventByModule(module);
 	for (const auto& key : g_ModuleData) {
 
 		if (key->module == module)
@@ -49,9 +54,40 @@ void deleteModuleData(asIScriptModule* module)
 		}
 		return _del;
 	});
+	{
+		//Remove async request for discarding module
+		std::lock_guard<std::recursive_mutex> lock(g_ClientMutex);
+		std::queue<InternalRequest*> temp;
+		while (!m_Completed.empty())
+		{
+			InternalRequest* req = m_Completed.front();
+			m_Completed.pop();
+
+			bool remove = false;
+
+			if (req->Callback)
+			{
+				asIScriptModule* mod = req->Callback->GetModule();
+				if (mod == module)
+					remove = true;
+			}
+			if (remove)
+			{
+				if (req->Callback)
+				{
+					req->Callback->Release();
+					req->Callback = nullptr;
+				}
+				delete req;
+			}
+			else
+			{
+				temp.push(req);
+			}
+		}
+		m_Completed = std::move(temp);
+	}
 }
-
-
 
 StructModuleName StructModuleName::fromStringDir(std::string v) {
 	StructModuleName n;

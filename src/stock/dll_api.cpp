@@ -69,7 +69,10 @@ void SV_StartFrame(void) {
 		SET_META_RESULT(MRES_IGNORED);
 		return;
 	}
-	SET_META_RESULT(MRES_IGNORED);
+	if (!Angelscript_ClientCommand(pEntity))
+	{
+		SET_META_RESULT(MRES_IGNORED);
+	}
 }
  void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer) {
 	SET_META_RESULT(MRES_IGNORED);

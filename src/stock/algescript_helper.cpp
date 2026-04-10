@@ -30,12 +30,37 @@ CScriptArray* CDictHelper::getKeys()
 	if (!this->basePtr)
 		return nullptr;
 	auto ctx = initContext(this->fnGetKeys);
+	auto tid = this->fnGetKeys->GetReturnTypeId();;
 	if (ctx->Execute() == asEXECUTION_FINISHED)
 	{
-		return static_cast<CScriptArray*>(ctx->GetReturnObject());
+		auto type = engine->GetTypeInfoById(tid);
+		auto r = static_cast<CScriptArray*>(ctx->GetReturnObject());
+		engine->AddRefScriptObject(r, type);
+		engine->ReturnContext(ctx);
+		return r;
 	}
 	return nullptr;
 }
+std::vector<std::string> CDictHelper::getKeysV2()
+{
+	std::vector<std::string> keys;
+	auto dict = (CScriptDictionary*)basePtr;
+	if (!ASEXT_CScriptDictionary_IsEmpty(dict))
+	{
+		std_string typeName{};
+		typeName.assign("string");
+		asITypeInfo* pStringTypeInfo = ASEXT_CASBaseManager_GetTypeInfoByName(ASEXT_GetServerManager(), &typeName);
+		CScriptDictionary_CIterator it{}, itend{};
+		ASEXT_CScriptDictionary_begin(dict, &it);ASEXT_CScriptDictionary_end(dict, &itend);
+		for (; ASEXT_CScriptDictionary_CIterator_operator_NE(&it, &itend); ASEXT_CScriptDictionary_CIterator_operator_PP(&it))
+		{
+			const CString* key = ASEXT_CScriptDictionary_CIterator_GetKey(&it);
+			keys.push_back(key->c_str());
+		}
+	}
+	return keys;
+}
+
 CScriptDictValue* CDictHelper::getByName(CString& name)
 {
 	if (!this->basePtr)
@@ -45,6 +70,7 @@ CScriptDictValue* CDictHelper::getByName(CString& name)
 	if (ctx->Execute() == asEXECUTION_FINISHED)
 	{
 		auto obj = ctx->GetReturnAddress();
+		engine->ReturnContext(ctx);
 		return static_cast<CScriptDictValue*>(obj);
 	}
 	return nullptr;
@@ -64,29 +90,32 @@ CString& CDictHelper::getString(CString& name)
 }
 void CDictHelper::setByName(CString& name, void* obj, int typeId)
 {
-	if (!this->basePtr || !this->fnSet)
+	if (!basePtr)
 		return;
+	ASEXT_CScriptDictionary_Set((CScriptDictionary*)basePtr, &name, obj, typeId);
+	/*
 	auto ctx = this->initContext(this->fnSet);
 	ctx->SetArgObject(0, &name);
 	ctx->SetArgVarType(1, obj, typeId);
-	ctx->Execute();
+	ctx->Execute();*/
 }
 bool CDictHelper::keyExists(CString& name)
 {
-	if (!this->basePtr)
+	if (!basePtr)
 		return false;
-	auto ctx = this->initContext(this->fnExists);
+	return ASEXT_CScriptDictionary_Exists((CScriptDictionary*)basePtr, &name);
+	/*auto ctx = this->initContext(this->fnExists);
 	ctx->SetArgObject(0, &name);
 	if (ctx->Execute() == asEXECUTION_FINISHED)
 	{
 		auto obj = ctx->GetReturnByte();
 		return obj;
 	}
-	return false;
+	return false;*/
 }
 std::string CDictHelper::getStdString(CString& name, std::string fmt)
 {
-	auto v = this->getByName(name);
+	auto v = getByName(name);
 	if (v)
 	{
 		if (fmt.size() > 0)
@@ -127,11 +156,15 @@ std::string CDictHelper::getStdString(CString& name, std::string fmt)
 	}
 	return std::string();
 }
+size_t CDictHelper::Size()
+{
+	return ASEXT_CScriptDictionary_GetSize((CScriptDictionary*)basePtr);;
+}
 asIScriptContext* CDictHelper::initContext(asIScriptFunction* fn)
 {
 	auto ctx = engine->RequestContext();
 	ctx->Prepare(fn);
-	ctx->SetObject(this->basePtr);
+	ctx->SetObject(basePtr);
 	return ctx;
 }
 #pragma endregion
@@ -164,7 +197,12 @@ asUINT CDateTimeHelper::GetSeconds()
 	auto ctx = this->initContext("GetSeconds");
 	ctx->SetObject(this->basePtr);
 	if (ctx->Execute() == asEXECUTION_FINISHED)
-		return ctx->GetReturnDWord();
+	{
+		auto res= ctx->GetReturnDWord();
+		engine->ReturnContext(ctx);
+		return res;
+
+	}
 	return asUINT();
 }
 asUINT CDateTimeHelper::GetMinutes()
@@ -172,7 +210,11 @@ asUINT CDateTimeHelper::GetMinutes()
 	auto ctx = this->initContext("GetMinutes");
 	ctx->SetObject(this->basePtr);
 	if (ctx->Execute() == asEXECUTION_FINISHED)
-		return ctx->GetReturnDWord();
+	{
+		auto r= ctx->GetReturnDWord();
+		engine->ReturnContext(ctx);
+		return r;
+	}
 	return asUINT();
 }
 asUINT CDateTimeHelper::GetHour()
@@ -180,7 +222,11 @@ asUINT CDateTimeHelper::GetHour()
 	auto ctx = this->initContext("GetHour");
 	ctx->SetObject(this->basePtr);
 	if (ctx->Execute() == asEXECUTION_FINISHED)
-		return ctx->GetReturnDWord();
+	{
+		auto r = ctx->GetReturnDWord();
+		engine->ReturnContext(ctx);
+		return r;
+	}
 	return asUINT();
 }
 asUINT CDateTimeHelper::GetDayOfMonth()
@@ -188,7 +234,11 @@ asUINT CDateTimeHelper::GetDayOfMonth()
 	auto ctx = this->initContext("GetDayOfMonth");
 	ctx->SetObject(this->basePtr);
 	if (ctx->Execute() == asEXECUTION_FINISHED)
-		return ctx->GetReturnDWord();
+	{
+		auto r = ctx->GetReturnDWord();
+		engine->ReturnContext(ctx);
+		return r;
+	}
 	return asUINT();
 }
 asUINT CDateTimeHelper::GetMonth()
@@ -196,7 +246,11 @@ asUINT CDateTimeHelper::GetMonth()
 	auto ctx = this->initContext("GetMonth");
 	ctx->SetObject(this->basePtr);
 	if (ctx->Execute() == asEXECUTION_FINISHED)
-		return ctx->GetReturnDWord();
+	{
+		auto r = ctx->GetReturnDWord();
+		engine->ReturnContext(ctx);
+		return r;
+	}
 	return asUINT();
 }
 asUINT CDateTimeHelper::GetYear()
@@ -204,7 +258,11 @@ asUINT CDateTimeHelper::GetYear()
 	auto ctx = this->initContext("GetYear");
 	ctx->SetObject(this->basePtr);
 	if (ctx->Execute() == asEXECUTION_FINISHED)
-		return ctx->GetReturnDWord();
+	{
+		auto r = ctx->GetReturnDWord();
+		engine->ReturnContext(ctx);
+		return r;
+	}
 	return asUINT();
 }
 
@@ -215,6 +273,7 @@ void CDateTimeHelper::SetSeconds(asUINT v)
 	ctx->SetObject(this->basePtr);
 	ctx->SetArgDWord(0, v);
 	ctx->Execute();
+	engine->ReturnContext(ctx);
 }
 void CDateTimeHelper::SetMinutes(asUINT v)
 {
@@ -222,6 +281,7 @@ void CDateTimeHelper::SetMinutes(asUINT v)
 	ctx->SetObject(this->basePtr);
 	ctx->SetArgDWord(0, v);
 	ctx->Execute();
+	engine->ReturnContext(ctx);
 }
 void CDateTimeHelper::SetHour(asUINT v)
 {
@@ -229,6 +289,7 @@ void CDateTimeHelper::SetHour(asUINT v)
 	ctx->SetObject(this->basePtr);
 	ctx->SetArgDWord(0, v);
 	ctx->Execute();
+	engine->ReturnContext(ctx);
 }
 void CDateTimeHelper::SetDayOfMonth(asUINT v)
 {
@@ -236,6 +297,7 @@ void CDateTimeHelper::SetDayOfMonth(asUINT v)
 	ctx->SetObject(this->basePtr);
 	ctx->SetArgDWord(0, v);
 	ctx->Execute();
+	engine->ReturnContext(ctx);
 }
 void CDateTimeHelper::SetMonth(asUINT v)
 {
@@ -243,6 +305,7 @@ void CDateTimeHelper::SetMonth(asUINT v)
 	ctx->SetObject(this->basePtr);
 	ctx->SetArgDWord(0, v);
 	ctx->Execute();
+	engine->ReturnContext(ctx);
 }
 void CDateTimeHelper::SetYear(asUINT v)
 {
@@ -250,6 +313,7 @@ void CDateTimeHelper::SetYear(asUINT v)
 	ctx->SetObject(this->basePtr);
 	ctx->SetArgDWord(0, v);
 	ctx->Execute();
+	engine->ReturnContext(ctx);
 }
 void CDateTimeHelper::SetDate(asUINT year, asUINT month, asUINT day)
 {
@@ -315,7 +379,9 @@ bool CAnyHelper::Retrieve(void* obj, int typeId)
 	ctx->SetArgVarType(0, obj, typeId);
 	if (ctx->Execute() == asEXECUTION_FINISHED)
 	{
-		return ctx->GetReturnByte() != 0;
+		auto r = ctx->GetReturnByte() != 0;
+		engine->ReturnContext(ctx);
+		return r;
 	}
 	return false;
 }
@@ -328,6 +394,7 @@ void CAnyHelper::Store(void* obj, int typeId)
 	{
 		
 	}
+	engine->ReturnContext(ctx);
 }
 
 

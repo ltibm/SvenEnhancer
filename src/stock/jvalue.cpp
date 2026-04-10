@@ -379,6 +379,7 @@ void* getJValue(int typeId, nlohmann::json& t, asIScriptEngine* engine, int curD
 			asITypeInfo* dictInfo = engine->GetTypeInfoByDecl("dictionary");
 			auto dict = engine->CreateScriptObject(dictInfo);
 			engine->NotifyGarbageCollectorOfNewObject(dict, dictInfo);
+			engine->AddRefScriptObject(dict, dictInfo);
 			auto jv = new JValue(t, curDepth + 1);
 			jv->DeserializeB(dict, dictInfo);
 			return dict;
@@ -483,12 +484,15 @@ void* getJValue(int typeId, nlohmann::json& t, asIScriptEngine* engine, int curD
 				if (obj)
 				{
 					sub->DeserializeB(obj, info);
+					engine->ReturnContext(ctx);
+					engine->AddRefScriptObject(obj, info);
 					//ctx->Release();
 					return addr;
 				}
 				else {
 					//ctx->Release();
 				}
+				engine->ReturnContext(ctx);
 			}
 		}
 	}
@@ -531,6 +535,7 @@ bool JValue::DeserializeB(void* obj, asITypeInfo* type) {
 		{
 			auto method = type->GetMethodByName("insertLast");
 			CScriptArray* s = reinterpret_cast<CScriptArray*>(obj);
+	
 			if (s && method)
 			{
 				int elementTypeId = s->m_ElementTypeId;
@@ -559,7 +564,11 @@ bool JValue::DeserializeB(void* obj, asITypeInfo* type) {
 								ctx->SetArgAddress(0, ptr);
 							}
 						}
-						ctx->Execute();
+						if (ctx->Execute() != asEXECUTION_FINISHED)
+						{
+
+						}
+						eng->ReturnContext(ctx);
 						//ctx->Release();
 					}
 				}
@@ -604,6 +613,7 @@ bool JValue::DeserializeB(void* obj, asITypeInfo* type) {
 					CString* v = new CString();
 					v->assign(var.c_str(), var.length());
 					dictHelper->setByName(*key, v, AS_TYPEID_STRING);
+					v->dtor();
 				}
 				else if (subValue.is_object())
 				{
@@ -626,12 +636,14 @@ bool JValue::DeserializeB(void* obj, asITypeInfo* type) {
 					dictHelper->setByName(*key, arr, typeId);
 
 				}
+				key->dtor();
 			}
 			return true;
 		}
 		return false;
 	}
 	JSerializeConfig* config = new JSerializeConfig();
+	config->AddRef();
 	if (fnCOnfig)
 	{
 		auto ctxProp = eng->RequestContext();
@@ -639,7 +651,8 @@ bool JValue::DeserializeB(void* obj, asITypeInfo* type) {
 		ctxProp->SetObject(obj);
 		ctxProp->SetArgObject(0, config);
 		ctxProp->Execute();
-		ctxProp->Release();
+		//ctxProp->Release();
+		eng->ReturnContext(ctxProp);
 	}
 	int methodCount = c->GetMethodCount();
 	for (size_t i = 0; i < methodCount; i++)
@@ -718,6 +731,7 @@ bool JValue::DeserializeB(void* obj, asITypeInfo* type) {
 			}
 		}
 		int exRes = ctx->Execute();
+		eng->ReturnContext(ctx);
 		//ctx->Release();
 	}
 	int propertyCount = c->GetPropertyCount();
@@ -810,12 +824,15 @@ bool JValue::DeserializeB(void* obj, asITypeInfo* type) {
 						ctx->Prepare(factory);
 						ctx->Execute();
 						void* newObjSub = ctx->GetReturnAddress();
+						void* retobj = ctx->GetReturnObject();
 						//ctx->Release();
 						if (newObjSub)
 						{
 							sub->DeserializeB(newObjSub, info);
+							eng->AddRefScriptObject(retobj, info);
 							*reinterpret_cast<void**>(static_cast<uint8_t*>(obj) + offset) = newObjSub;
 						}
+						eng->ReturnContext(ctx);
 					}
 				}
 			}
@@ -978,8 +995,8 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 			ctxsz->Prepare(methodCount);
 			ctxsz->SetObject(s);
 			ctxsz->Execute();
-
 			size_t size = ctxsz->GetReturnDWord();
+			eng->ReturnContext(ctxsz);
 			//ctxsz->Release();
 			for (size_t i = 0; i < size; i++)
 			{
@@ -988,12 +1005,16 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 				ctx->SetObject(s);
 				ctx->SetArgDWord(0, i);
 				if (ctx->Execute() != asEXECUTION_FINISHED)
+				{
+					eng->ReturnContext(ctx);
 					continue;
+				}
 				void* obj = ctx->GetReturnAddress();
 				void* objb = ctx->GetReturnObject();
 
 				void* newObj = *reinterpret_cast<void**>(static_cast<uint8_t*>(obj));
 				jarray.push_back(this->FillFromObjectPrv(isPrimviteType(elementTypeId) || isSpecialType(elementTypeId) ? obj : newObj, arrT, arrT == nullptr ? elementTypeId : 0, depth++));
+				eng->ReturnContext(ctx);
 			}
 			return jarray;
 		}
@@ -1004,6 +1025,7 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 		CDictHelper* dictHelper = new CDictHelper(obj);
 		nlohmann::json jobject = nlohmann::json::object();
 		auto keys = dictHelper->getKeys();
+		auto keysv2 = dictHelper->getKeysV2();
 		auto size = keys->size();
 		for (size_t i = 0; i < size; i++)
 		{
@@ -1021,6 +1043,7 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 				jobject[key->c_str()] = this->FillFromObjectPrv(isPrimviteType(dTypeId) || isSpecialType(dTypeId) ? addr : addr, dType, dType == nullptr ? dTypeId : 0, depth++);
 				//jobject[key->c_str()] = this->FillFromObjectPrv(newObj, dType, dType == nullptr ? dictValue->GetTypeId() : 0);
 			}
+			cstr->dtor();
 		}
 		return jobject;
 	}
@@ -1048,6 +1071,8 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 
 	}
 	JSerializeConfig* config = new JSerializeConfig();
+	config->AddRef();
+
 	if (fnCOnfig)
 	{
 		auto ctxProp = eng->RequestContext();
@@ -1055,7 +1080,8 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 		ctxProp->SetObject(obj);
 		ctxProp->SetArgObject(0, config);
 		ctxProp->Execute();
-		ctxProp->Release();
+		eng->ReturnContext(ctxProp);
+
 	}
 	nlohmann::json json = nlohmann::json::object();
 	int methodCount = c->GetMethodCount();
@@ -1119,12 +1145,15 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 			{
 				json[_alias] = ctx->GetReturnDouble();
 			}
+			eng->ReturnContext(ctx);
 
 		}
 		else if (typeId != asTYPEID_VOID)
 		{
 			void* rObj = ctx->GetReturnAddress();
-
+			void* robbj = ctx->GetReturnObject();
+			eng->AddRefScriptObject(robbj, mtype);
+			eng->ReturnContext(ctx);
 			if (typeId & asTYPEID_OBJHANDLE)
 			{
 				void* actualObj = *(void**)rObj;
@@ -1142,6 +1171,7 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 			}
 
 		}
+
 		//ctx->Release();
 	}
 	int propertyCount = c->GetPropertyCount();
@@ -1534,6 +1564,8 @@ void* JValue::GetKeys()
 		ctx->SetObject(arr);
 		ctx->SetArgObject(0, s);
 		ctx->Execute();
+		eng->ReturnContext(ctx);
+		s->dtor();
 	}
 	auto it = json.begin();
 	return arr;

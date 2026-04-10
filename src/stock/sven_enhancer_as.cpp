@@ -1,11 +1,15 @@
 #include <svenenhancer.h>
 #include <mysql_sven.h>
+#include <callbackitem.h>
+
+std::unordered_map<std::string, std::vector<ClientCmdEntry>> m_ClientCmds;
+std::unordered_map<std::string, std::vector<ServerCmdEntry>> m_ServerCmds;
 
 SvenEnhancerAs::SvenEnhancerAs() {
 	init();
 }
 
-void SvenEnhancerAs::init(){
+void SvenEnhancerAs::init() {
 	auto engine = GetASEngine();
 	pDictionary = new RefObject();
 	asITypeInfo* dictInfo = engine->GetTypeInfoByDecl("dictionary");
@@ -13,8 +17,6 @@ void SvenEnhancerAs::init(){
 	pDictionary->data = engine->CreateScriptObject(dictInfo);
 	engine->AddRefScriptObject(pDictionary->data, dictInfo);
 	engine->NotifyGarbageCollectorOfNewObject(pDictionary->data, dictInfo);
-
-
 }
 SvenEnhancerAs::~SvenEnhancerAs() {
 	if (pDictionary && pDictionary->data)
@@ -38,9 +40,7 @@ JValue* SvenEnhancerAs::Json_ParseFromFile(CString& input) {
 	}
 	std::filesystem::path _path(jsonString);
 	std::filesystem::path rootPath = "./svencoop";
-
 	std::filesystem::path full = std::filesystem::weakly_canonical(rootPath / _path);
-
 	try {
 		auto jv = new JValue();
 		std::ifstream fStream(full);
@@ -142,6 +142,8 @@ CString* SvenEnhancerAs::MD5AS(CString& data)
 }
 CString* SvenEnhancerAs::Interpolate(CString& input, void* dict)
 {
+	if (!dict)
+		return &input;
 	std::locale old;
 	std::string text = input.c_str();
 	std::regex double_braces(R"(\{\{([^{}]+)\}\})", std::regex_constants::extended);
@@ -163,6 +165,7 @@ CString* SvenEnhancerAs::Interpolate(CString& input, void* dict)
 		k->assign(splitted[0].c_str(), splitted[0].length());
 		std::string replacement = helper->getStdString(*k, fmt);
 		text = match.prefix().str() + replacement + match.suffix().str();
+		k->dtor();
 	}
 	CString* res = new CString();;
 	res->assign(text.c_str(), text.length());
@@ -171,7 +174,12 @@ CString* SvenEnhancerAs::Interpolate(CString& input, void* dict)
 }
 void SvenEnhancerAs::PluginExit()
 {
-	auto module = GetModulePtr(ASEXT_GetServerManager());
+	//No Need
+}
+
+void SvenEnhancerAs::PluginExitIntl(asIScriptModule* module)
+{
+	//auto module = GetModulePtr(ASEXT_GetServerManager());
 	if (module)
 	{
 		deleteModuleData(module);
@@ -179,6 +187,282 @@ void SvenEnhancerAs::PluginExit()
 	}
 }
 
+bool SvenEnhancerAs::RegisterClientCmd(CString& name, asIScriptFunction* callback, int ordernum)
+{
+	std::string _name(name.c_str());
+	if (_name.empty() || !callback)
+		return false;
+
+	auto& list = m_ClientCmds[_name];
+	callback->AddRef();
+	list.push_back({ _name, callback, ordernum });
+	std::sort(list.begin(), list.end(),
+		[](const ClientCmdEntry& a, const ClientCmdEntry& b)
+		{
+			return a.order < b.order;
+		});
+	return true;
+}
+
+bool SvenEnhancerAs::UnregisterClientCmd(CString& name, asIScriptFunction* callback)
+{
+	std::string _name(name.c_str());
+	if (_name.empty() || !callback)
+		return false;
+	bool removed = false;
+	for (auto& [name, list] : m_ClientCmds)
+	{
+		auto it = std::remove_if(list.begin(), list.end(),
+			[&](const ClientCmdEntry& e)
+			{
+				return e.callback == callback;
+			});
+		if (it != list.end())
+		{
+			for (auto i = it; i != list.end(); ++i)
+			{
+				i->callback->Release();
+				removed = true;
+			}
+
+			list.erase(it, list.end());
+		}
+	}
+	return removed;
+}
+
+bool SvenEnhancerAs::UnregisterClientCmdsByModule(asIScriptModule* module)
+{
+	if (!module)
+		return false;
+	bool removed = false;
+	for (auto& [name, list] : m_ClientCmds)
+	{
+		auto it = std::remove_if(list.begin(), list.end(),
+			[&](const ClientCmdEntry& e)
+			{
+				return e.callback && e.callback->GetModule() == module;
+			});
+
+		if (it != list.end())
+		{
+			for (auto i = it; i != list.end(); ++i)
+			{
+				if (i->callback)
+					i->callback->Release();
+
+				removed = true;
+			}
+			list.erase(it, list.end());
+		}
+	}
+	return removed;
+}
+
+int SvenEnhancerAs::TriggerClientCmd(edict_t* edict, const std::string& cmd)
+{
+	if (!edict)
+		return 0;
+	int lastr = 0;
+	auto engine = GetASEngine();
+
+	std::string key = cmd;
+
+	auto it = m_ClientCmds.find(cmd);
+	if (it == m_ClientCmds.end())
+		return lastr;
+
+	auto& list = it->second;
+	auto snapshot = list;
+	CallbackItem item;
+	item.AddRef();
+
+	for (auto& entry : snapshot)
+	{
+		if (!entry.callback)
+			continue;
+
+		//item.StopCall = false;
+		//item.ReturnCode = 0;
+		asIScriptContext* ctx = engine->RequestContext();
+		if (!ctx)
+			continue;
+		ctx->Prepare(entry.callback);
+		ctx->SetArgAddress(0, edict);
+		ctx->SetArgAddress(1, &item);
+		int r = ctx->Execute();
+		lastr = ctx->GetReturnDWord();
+		engine->ReturnContext(ctx);
+		if (item.StopCall)
+			break;
+	}
+	return lastr;
+}
+
+bool SvenEnhancerAs::RegisterServerCmd(CString& name, asIScriptFunction* callback, int ordernum)
+{
+	std::string _name(name.c_str());
+	if (_name.empty() || !callback)
+		return false;
+	bool exists = ServerCmdExists(_name);
+	auto& list = m_ServerCmds[_name];
+	callback->AddRef();
+	list.push_back({ _name, callback, ordernum });
+	std::sort(list.begin(), list.end(),
+		[](const ServerCmdEntry& a, const ServerCmdEntry& b)
+		{
+			return a.order < b.order;
+		});
+	//Check handler is exists
+	if (!exists)
+	{
+		//Register handler
+		REG_SVR_COMMAND((char*)name.c_str(), SvenEnhancerAs::ServerCommandHandler);
+	}
+	return true;
+}
+
+bool SvenEnhancerAs::UnregisterServerCmd(CString& name, asIScriptFunction* callback, int ordernum)
+{
+	std::string _name(name.c_str());
+	if (_name.empty() || !callback)
+		return false;
+	bool removed = false;
+	for (auto& [name, list] : m_ServerCmds)
+	{
+		auto it = std::remove_if(list.begin(), list.end(),
+			[&](const ServerCmdEntry& e)
+			{
+				return e.callback == callback;
+			});
+		if (it != list.end())
+		{
+			for (auto i = it; i != list.end(); ++i)
+			{
+				i->callback->Release();
+				removed = true;
+			}
+
+			list.erase(it, list.end());
+		}
+	}
+	return removed;
+}
+
+bool SvenEnhancerAs::UnregisterServerCmdsByModule(asIScriptModule* module)
+{
+	if (!module)
+		return false;
+	bool removed = false;
+	for (auto& [name, list] : m_ServerCmds)
+	{
+		auto it = std::remove_if(list.begin(), list.end(),
+			[&](const ServerCmdEntry& e)
+			{
+				return e.callback && e.callback->GetModule() == module;
+			});
+
+		if (it != list.end())
+		{
+			for (auto i = it; i != list.end(); ++i)
+			{
+				if (i->callback)
+					i->callback->Release();
+
+				removed = true;
+			}
+			list.erase(it, list.end());
+		}
+	}
+	return removed;
+}
+
+int SvenEnhancerAs::TriggerServerCmd(std::string& name)
+{
+	int lastr = 0;
+	auto engine = GetASEngine();
+
+	std::string key = name;
+
+	auto it = m_ServerCmds.find(name);
+	if (it == m_ServerCmds.end())
+		return lastr;
+
+	auto& list = it->second;
+	auto snapshot = list;
+	CallbackItem item;
+	item.AddRef();
+	for (auto& entry : snapshot)
+	{
+		if (!entry.callback)
+			continue;
+		//item.StopCall = false;
+		//item.ReturnCode = 0;
+		asIScriptContext* ctx = engine->RequestContext();
+		if (!ctx)
+			continue;
+		ctx->Prepare(entry.callback);
+		ctx->SetArgAddress(0, &item);
+		int r = ctx->Execute();
+		lastr = ctx->GetReturnDWord();
+		engine->ReturnContext(ctx);
+		if (item.StopCall)
+			break;
+	}
+	return lastr;
+}
+
+bool SvenEnhancerAs::ServerCmdExists(std::string name)
+{
+	return m_ServerCmds.contains(name);
+}
+
+void SvenEnhancerAs::ServerCommandHandler()
+{
+	std::string _cmd = CMD_ARGV(0);
+	g_SE->TriggerServerCmd(_cmd);
+}
+
+bool SvenEnhancerAs::ClientCmd(edict_t* edict, CString& command)
+{
+	if (!edict || command.empty())
+		return false;
+	std::string cmd(command.c_str());
+	std::string fixed = cmd;
+	while (!fixed.empty() && fixed.back() == ' ')
+		fixed.pop_back();
+	char last = fixed.back();
+	if (last != '\n' && last != ';')
+	{
+		fixed += '\n';
+	}
+	CLIENT_COMMAND(edict, (char*)cmd.c_str());
+	return true;
+}
+cvar_t* SvenEnhancerAs::RegisterCvar(CString& name, CString& value, int flags, float flvalue)
+{
+	if (name.empty())
+		return nullptr;
+	cvar_t* cvar = new cvar_t();
+	cvar->name = (char*)name.c_str();
+	cvar->value = (flvalue);
+	cvar->string = (char*)value.c_str();
+	cvar->flags = FCVAR_SERVER;
+	g_engfuncs.pfnCVarRegister(cvar);
+	return g_engfuncs.pfnCVarGetPointer(name.c_str());
+};
+cvar_t* SvenEnhancerAs::GetCvar(CString& name)
+{
+	if (name.empty())
+		return nullptr;
+	return g_engfuncs.pfnCVarGetPointer(name.c_str());
+};
+bool SvenEnhancerAs::ClientCmdI(size_t index, CString& command)
+{
+	if (index <= 0)
+		return false;
+	return ClientCmd(INDEXENT(index), command);
+}
 SvenEnhancerEnt::SvenEnhancerEnt()
 {
 }
@@ -281,6 +565,7 @@ void* SvenEnhancerEnt::GetData(int index)
 	target[index] = dict;
 	return dict;
 }
+
 void* SvenEnhancerEnt::GetDataByEdict(edict_t* edict)
 {
 	if (!edict || edict->free)
@@ -311,5 +596,118 @@ void SvenEnhancerEnt::ClearAllEntityData()
 	g_EntityData.clear();
 }
 
+bool SvenEnhancerEvent::On(CString& name, asIScriptFunction* callback)
+{
+	if (name.empty() || !callback)
+		return false;
+	callback->AddRef();
+	std::string _name(name.c_str());
+	auto parsed = ParseEvent(_name);
+	auto& vec = g_events[parsed.name];
+	vec.push_back(SvenEnhancerEventItem{
+			callback,
+			parsed.tag
+		});
+	return true;
+}
+bool SvenEnhancerEvent::Off(CString& name, asIScriptFunction* callback)
+{
+	if (name.empty())
+		return false;
+	std::string _name(name.c_str());
+	ParsedEvent parsed = ParseEvent(_name);
+	auto it = g_events.find(parsed.name);
 
+	if (it == g_events.end())
+		return false;
 
+	auto& vec = it->second;
+	for (auto i = vec.begin(); i != vec.end(); )
+	{
+		bool matchFn = (callback == nullptr || i->callback == callback);
+		bool matchTag = (parsed.tag.empty() || i->tag == parsed.tag);
+		if (matchFn && matchTag)
+		{
+			i = vec.erase(i);
+		}
+		else
+		{
+			++i;
+		}
+	}
+	if (vec.empty())
+		g_events.erase(it);
+
+	return true;
+}
+
+size_t SvenEnhancerEvent::Trigger(CString& name, CallbackItem* item, bool callAll)
+{
+	if (name.empty())
+		return 0;
+	if (item)
+	{
+		//item->AddRef();
+
+		CASServerManager* manager = ASEXT_GetServerManager();
+		auto module = GetModulePtr(manager);
+		if (module)
+		{
+			item->moduleName = module->GetName();
+		}
+	}
+	std::string _name(name.c_str());
+	auto it = g_events.find(_name);
+	if (it == g_events.end())
+		return 0;
+	auto& vec = it->second;
+	auto copy = vec;
+	auto engine = GetASEngine();
+	size_t total = 0;
+	for (auto& entry : copy)
+	{
+		if (!entry.callback)
+			continue;
+
+		//item.StopCall = false;
+		//item.ReturnCode = 0;
+		asIScriptContext* ctx = engine->RequestContext();
+		if (!ctx)
+			continue;
+		ctx->Prepare(entry.callback);
+		ctx->SetArgAddress(0, &name);
+		ctx->SetArgObject(1, item);
+		int r = ctx->Execute();
+		engine->ReturnContext(ctx);
+		total++;
+		if (item && item->StopCall && !callAll)
+			break;
+	}
+	return total;
+}
+
+void SvenEnhancerEvent::ClearEventByModule(asIScriptModule* module)
+{
+	bool removedAny = false;
+	for (auto it = g_events.begin(); it != g_events.end(); )
+	{
+		auto& vec = it->second;
+
+		for (auto i = vec.begin(); i != vec.end(); )
+		{
+			if (i->callback && i->callback->GetModule() == module)
+			{
+				i->callback->Release();
+				i->callback = nullptr;
+				i = vec.erase(i);
+				removedAny = true;
+			}
+			else
+				++i;
+		}
+		if (vec.empty())
+			it = g_events.erase(it);
+		else
+			++it;
+	}
+}

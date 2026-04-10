@@ -1,8 +1,8 @@
 #pragma once
 
-#define SE_VERSION_FLOAT 0.70
-#define SE_VERSION "0.70"
-#define SE_DATE "08.04.2026"
+#define SE_VERSION_FLOAT 0.80
+#define SE_VERSION "0.80"
+#define SE_DATE "10.04.2026"
 #define SE_PRINT(msg) \
     g_engfuncs.pfnServerPrint("[Sven Enhancer] " msg "\r\n")
 
@@ -75,5 +75,25 @@ T GetSymbol(void* handle, const char* name)
 	return reinterpret_cast<T>(GetProcAddress((HMODULE)handle, name));
 #else
 	return reinterpret_cast<T>(dlsym(handle, name));
+#endif
+}
+
+#ifdef _WIN32
+#define AS_CALL __fastcall
+#else
+#define AS_CALL
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
+
+static bool SetMemoryWritable(void* ptr, size_t size, bool writable, unsigned long& oldProtect) {
+#ifdef _WIN32
+	return VirtualProtect(ptr, size, writable ? PAGE_READWRITE : oldProtect, &oldProtect);
+#else
+	size_t pageSize = sysconf(_SC_PAGESIZE);
+	uintptr_t start = (uintptr_t)ptr & ~(pageSize - 1);
+	uintptr_t end = (uintptr_t)ptr + size;
+	size_t fullSize = end - start;
+	return mprotect((void*)start, fullSize, writable ? (PROT_READ | PROT_WRITE | PROT_EXEC) : (PROT_READ | PROT_EXEC)) == 0;
 #endif
 }

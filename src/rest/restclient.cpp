@@ -262,7 +262,6 @@ void RestClient::Dispatch() {
                 ctx->SetArgObject(0, context);
                 ctx->Execute();
                 ctx->Release();
-
                 job->Callback->Release();
 
             }

@@ -1,7 +1,24 @@
 #pragma once
+#include <callbackitem.h>
 class JValue;
 class MySqlConnection;
 class MySqlConnectionConfig;
+
+
+struct ClientCmdEntry
+{
+	std::string name;
+	asIScriptFunction* callback;
+	int order;
+};
+struct ServerCmdEntry {
+	std::string name;
+	asIScriptFunction* callback;
+	int order;
+};
+
+extern std::unordered_map<std::string, std::vector<ClientCmdEntry>> m_ClientCmds;
+extern std::unordered_map<std::string, std::vector<ServerCmdEntry>> m_ServerCmds;
 
 class SvenEnhancerAs : public CASBaseGCObject
 {
@@ -25,11 +42,60 @@ public:
 	MySqlConnection* MySqlConnection_Create(MySqlConnectionConfig& config);
 	void* getGlobals();
 	void PluginExit();
+	void PluginExitIntl(asIScriptModule*);
+	bool RegisterClientCmd(CString& name, asIScriptFunction* callback, int ordernum);
+	bool UnregisterClientCmd(CString& name, asIScriptFunction* callback);
+	bool UnregisterClientCmdsByModule(asIScriptModule* module);
+	int TriggerClientCmd(edict_t* edict, const std::string& cmd);
+	bool RegisterServerCmd(CString& name, asIScriptFunction* callback, int ordernum);
+	bool UnregisterServerCmd(CString& name, asIScriptFunction* callback, int ordernum);
+	bool UnregisterServerCmdsByModule(asIScriptModule* module);
+	bool ClientCmd(edict_t* edict, CString& command);
+	cvar_t* RegisterCvar(CString& name, CString& value, int flags, float flvalue);
+	cvar_t* GetCvar(CString& name);
+	bool ClientCmdI(size_t index, CString& command);
+	int TriggerServerCmd(std::string& name);
+	bool ServerCmdExists(std::string name);
+	static void ServerCommandHandler();
 
 private:
 	void init();
 };
 
+struct SvenEnhancerEventItem
+{
+	asIScriptFunction* callback;
+	std::string tag;
+};
+struct ParsedEvent
+{
+	std::string name;
+	std::string tag;
+};
+class SvenEnhancerEvent {
+
+public:
+	std::unordered_map<std::string, std::vector<SvenEnhancerEventItem>> g_events;
+	bool On(CString& name, asIScriptFunction* callback);
+	bool Off(CString& name, asIScriptFunction* callback);
+	size_t Trigger(CString& name, CallbackItem* item, bool callAll);
+	void ClearEventByModule(asIScriptModule* module);
+	inline ParsedEvent ParseEvent(const std::string& full)
+	{
+		ParsedEvent e;
+		size_t pos = full.find('#');
+		if (pos == std::string::npos)
+		{
+			e.name = full;
+		}
+		else
+		{
+			e.name.assign(full, 0, pos);
+			e.tag.assign(full, pos + 1, std::string::npos);
+		}
+		return e;
+	}
+};
 
 class SvenEnhancerEnt
 {
@@ -59,4 +125,5 @@ public:
 };
 
 extern SvenEnhancerEnt g_SEEnt;
-
+extern SvenEnhancerAs* g_SE;
+extern SvenEnhancerEvent g_SEEvent;

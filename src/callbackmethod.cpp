@@ -38,6 +38,7 @@ void CallOnReadyMethod(ModuleReadyData* data)
 		void* lastObj = nullptr;
 		ctx->Prepare(data->function);
 		int er = ctx->Execute();
+		engine->ReturnContext(ctx);
 	}
 }
 
@@ -212,11 +213,14 @@ void* SC_SERVER_DECL CallMethod(void* pthis, SC_SERVER_DUMMYARG CString* name, v
 	if (res)
 	{
 		CallbackItem* item = (CallbackItem*)res;
+		item->AddRef();
 		lastObj = item;
 	}
 	else {
 		lastObj = nullptr;
 	}
+	engine->ReturnContext(ctx);
+
 	string->dtor();
 	return lastObj;
 }
@@ -224,6 +228,10 @@ void* SC_SERVER_DECL CallMethod(void* pthis, SC_SERVER_DUMMYARG CString* name, v
 
 void RegisterCallbackMethods(CASDocumentation* pASDoc, asIScriptEngine* engine)
 {
+
+	ASEXT_RegisterFuncDef(pASDoc, "callback for Events", "void EventCallback(string&in name, CallbackItem@ item = null)");
+
+
 	ASEXT_RegisterObjectMethod(pASDoc,
 		"Register module for common", "SvenEnhancer", "bool Register(string&in moduleName)",
 		(void*)ModuleRegister, asCALL_THISCALL);
@@ -246,4 +254,25 @@ void RegisterCallbackMethods(CASDocumentation* pASDoc, asIScriptEngine* engine)
 	ASEXT_RegisterObjectMethod(pASDoc,
 		"Call method for common", "SvenEnhancer", "CallbackItem@ CallMethod(string&in name, any@ data = null, dictionary@ dict = null)",
 		(void*)CallMethod, asCALL_THISCALL);
+
+	engine->RegisterObjectMethod(
+		"SvenEnhancerEvent",
+		"bool On(string&in name, EventCallback@ item = null)",
+		asMETHOD(SvenEnhancerEvent, On),
+		asCALL_THISCALL
+	);
+
+	engine->RegisterObjectMethod(
+		"SvenEnhancerEvent",
+		"bool Off(string&in name, EventCallback@ item = null)",
+		asMETHOD(SvenEnhancerEvent, Off),
+		asCALL_THISCALL
+	);
+
+	engine->RegisterObjectMethod(
+		"SvenEnhancerEvent",
+		"uint Trigger(string&in name, CallbackItem@ item = null, bool callAll = false)",
+		asMETHOD(SvenEnhancerEvent, Trigger),
+		asCALL_THISCALL
+	);
 }

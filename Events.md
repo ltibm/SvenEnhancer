@@ -78,7 +78,7 @@ Plugin 2
       //This command will only delete the command.executed event that contains #mytag.
       SE_EVENT.Off("command.executed#mytag");
 
-      //This command will delete all command.executed#mytag event,
+      //This command will delete all command.executed event,
       SE_EVENT.Off("command.executed");
 
       //Or you can pass Callback parameter to remove event

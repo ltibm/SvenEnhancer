@@ -1025,7 +1025,7 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 		CDictHelper* dictHelper = new CDictHelper(obj);
 		nlohmann::json jobject = nlohmann::json::object();
 		auto keys = dictHelper->getKeys();
-		auto keysv2 = dictHelper->getKeysV2();
+		//auto keysv2 = dictHelper->getKeysV2();
 		auto size = keys->size();
 		for (size_t i = 0; i < size; i++)
 		{

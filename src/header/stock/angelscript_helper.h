@@ -48,6 +48,7 @@ public:
 	CDictHelper(void* base);
 	CScriptArray* getKeys();
 	std::vector<std::string> getKeysV2();
+	CScriptDictValue* getByName(std::string name);
 	CScriptDictValue* getByName(CString& name);
 	CString& getString(CString& name);
 	void setByName(CString& name, void* obj, int typeId);

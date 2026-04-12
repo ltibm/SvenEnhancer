@@ -13,6 +13,8 @@ HMODULE  mysqlHandle;
 void* mysqlHandle;
 #endif
 
+
+
 void RegisterMysql() {
 	namespace fs = std::filesystem;
 

@@ -1,4 +1,5 @@
 #include <svenenhancer.h>
+#include <sqlite3_sven.h>
 
 angelhook_t g_AngelHook;
 void RegisterAngelScriptMethods() {
@@ -13,7 +14,7 @@ void ShutDown()
 }
 void CloseAngelScriptsItem()
 {
-
+	sqliteKeepRun = false;
 }
 void ServerActivateAS()
 {

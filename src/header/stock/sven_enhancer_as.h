@@ -57,6 +57,7 @@ public:
 	int TriggerServerCmd(std::string& name);
 	bool ServerCmdExists(std::string name);
 	static void ServerCommandHandler();
+	CString* SqliteEscape(CString& input);
 
 private:
 	void init();

@@ -1,6 +1,7 @@
 #include <svenenhancer.h>
 #include <angelscript_expansion.h>
 #include <mysql_sven.h>
+#include <sqlite3_sven.h>
 #ifdef _WIN32
 #define EXPORT __declspec(dllexport)
 #else
@@ -121,6 +122,7 @@ extern "C" {
 		RegisterAngelScriptHooks();
 		RegisterMysql();
 		InitCurl();
+		RegisterSqlite();
 
 		char msg[100];
 		sprintf(msg, "\nSven Enhancer: v%.2f\n", SE_VERSION_FLOAT);

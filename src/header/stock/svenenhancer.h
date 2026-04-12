@@ -6,6 +6,7 @@
 #include <ctime>
 #include <unordered_map>
 #include <unordered_set>
+#include <algorithm>
 #ifdef _MSC_VER
 #include <cstdio>
 namespace std {

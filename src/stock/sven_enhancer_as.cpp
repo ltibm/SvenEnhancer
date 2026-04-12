@@ -1,6 +1,7 @@
 #include <svenenhancer.h>
 #include <mysql_sven.h>
 #include <callbackitem.h>
+#include <sqlite3_sven.h>
 
 std::unordered_map<std::string, std::vector<ClientCmdEntry>> m_ClientCmds;
 std::unordered_map<std::string, std::vector<ServerCmdEntry>> m_ServerCmds;
@@ -421,6 +422,19 @@ void SvenEnhancerAs::ServerCommandHandler()
 {
 	std::string _cmd = CMD_ARGV(0);
 	g_SE->TriggerServerCmd(_cmd);
+}
+
+CString* SvenEnhancerAs::SqliteEscape(CString& input)
+{
+	CString* txt = new CString();
+	if (!Sqlite3Fn.loaded)
+	{
+		txt->assign(input.c_str(), input.size());
+		return txt;
+	}
+	char* res = Sqlite3Fn._sqlite3_mprintf("%q", txt->c_str());
+	txt->assign(res, strlen(res));
+	return txt;
 }
 
 bool SvenEnhancerAs::ClientCmd(edict_t* edict, CString& command)

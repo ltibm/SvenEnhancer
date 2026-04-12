@@ -1,8 +1,8 @@
 #pragma once
 
-#define SE_VERSION_FLOAT 0.80
-#define SE_VERSION "0.80"
-#define SE_DATE "10.04.2026"
+#define SE_VERSION_FLOAT 0.90
+#define SE_VERSION "0.90"
+#define SE_DATE "13.04.2026"
 #define SE_PRINT(msg) \
     g_engfuncs.pfnServerPrint("[Sven Enhancer] " msg "\r\n")
 
@@ -66,15 +66,40 @@ int RegsiterObject(const char* name, asIScriptEngine* engine, int type =-1)
 	r = engine->RegisterObjectBehaviour(name, asBEHAVE_RELEASEREFS, "void ReleaseReferences(int& in)", asMETHOD(T, ReleaseReferences), asCALL_THISCALL);
 	return r;
 }
-
-
+#ifndef _WIN32
+#include <link.h>
+#include <dlfcn.h>
+inline uintptr_t GetModuleBase(void* handle)
+{
+	link_map* map = nullptr;
+	dlinfo(handle, RTLD_DI_LINKMAP, &map);
+	return (uintptr_t)map->l_addr;
+}
+#endif
 template<typename T>
-T GetSymbol(void* handle, const char* name)
+T GetSymbol(void* handle, const char* name, uintptr_t fallbackOffset = 0)
 {
 #ifdef _WIN32
-	return reinterpret_cast<T>(GetProcAddress((HMODULE)handle, name));
+	auto sym = reinterpret_cast<T>(GetProcAddress((HMODULE)handle, name));
+	if (sym)
+		return sym;
+	if (fallbackOffset && handle)
+	{
+		auto base = reinterpret_cast<uintptr_t>(handle);
+		return reinterpret_cast<T>(base + fallbackOffset);
+	}
+
+	return nullptr;
 #else
-	return reinterpret_cast<T>(dlsym(handle, name));
+	void* sym = dlsym(handle, name);
+	if (sym)
+		return reinterpret_cast<T>(sym);
+	if (fallbackOffset && handle)
+	{
+		uintptr_t base = GetModuleBase(handle);
+		return reinterpret_cast<T>(base + fallbackOffset);
+	}
+	return nullptr;
 #endif
 }
 

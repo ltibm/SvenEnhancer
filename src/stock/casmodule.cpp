@@ -1,5 +1,11 @@
 #include <svenenhancer.h>
 
+asIScriptModule* GetActiveModule()
+{
+	CASServerManager* manager = ASEXT_GetServerManager();
+	return GetModulePtr(manager);
+}
+
 asIScriptModule* GetModulePtr(CASServerManager* mgr)
 {
 	if (mgr && mgr->curModule)

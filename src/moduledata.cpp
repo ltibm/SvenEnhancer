@@ -1,4 +1,5 @@
 #include <moduledata.h>
+#include <sqlite3_sven.h>
 std::vector<ModuleData*> g_ModuleData;
 std::vector<ModuleReadyData*> g_ModuleReadyData;
 ModuleData* findModuleByModuleName(char* module)
@@ -31,6 +32,7 @@ ModuleData* findModuleByName(std::string name)
 
 void deleteModuleData(asIScriptModule* module)
 {
+	SqliteConnection::CloseAllConnectionsByModule(module);
 	//Remove all register clientcmds
 	g_SE->UnregisterClientCmdsByModule(module);
 	//Remove all register servercmds

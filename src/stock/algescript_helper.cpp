@@ -61,6 +61,12 @@ std::vector<std::string> CDictHelper::getKeysV2()
 	return keys;
 }
 
+CScriptDictValue* CDictHelper::getByName(std::string name)
+{
+	auto str = CreateString(name.c_str());
+	return getByName(*str);
+}
+
 CScriptDictValue* CDictHelper::getByName(CString& name)
 {
 	if (!this->basePtr)

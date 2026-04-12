@@ -35,6 +35,7 @@
 #include "angelscript_addon.h"
 #include <angelscript_expansion.h>
 #include <rest.h>
+#include <sqlite3_sven.h>
 
 #define CALL_ANGELSCRIPT(pfn, ...) if (ASEXT_CallHook){(*ASEXT_CallHook)(g_AngelHook.pfn, 0, __VA_ARGS__);}
 
@@ -42,6 +43,7 @@
 static bool s_HookedFlag = false;
 void SV_StartFrame(void) {
 	RestClient::RestFrame();
+	SqliteConnection::CallbackFrame();
 	SET_META_RESULT(MRES_IGNORED);
 }
 

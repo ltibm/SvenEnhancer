@@ -2,6 +2,7 @@
 #include "angelscript_expansion.h"
 #include <mysql_sven.h>
 #include <callbackitem.h>
+#include <sqlite3_sven.h>
 
 CASDocumentation* asDoc = nullptr;
 SvenEnhancerAs* g_SE = nullptr;
@@ -14,10 +15,11 @@ DiscardFn oDiscard = nullptr;
 static bool is_hooking = true;
 void AS_CALL hookDiscard(asIScriptModule* pThis) {
 	//Now we can access plugin unload
-	if (!is_hooking && pThis)
-		Angelscript_OnModuleDiscard(pThis);
+
 	if (oDiscard)
 		oDiscard(pThis);
+	if (!is_hooking && pThis)
+		Angelscript_OnModuleDiscard(pThis);
 }
 static CString* String_Interpolate(CString& str, void* dict)
 {
@@ -63,8 +65,8 @@ void AngelScript_Expand() {
 		//engine->RegisterGlobalFunction("JValue@ JsonParseFromObject(ref @)", asFunctionPtr(Json_ParseObject), asCALL_CDECL);
 
 		RegisterJValue(engine);
-
 		RegisterMysqlAngelScript(engine);
+		RegisterSqliteAngelScript(engine);
 		//Register RestClient
 		RestClient::RegisterAngelScript(pASDoc, engine);
 		RegisterCallBackItem(pASDoc, engine);
@@ -239,17 +241,13 @@ void AngelScript_Expand() {
 			asMETHOD(SvenEnhancerAs, ClientCmdI),
 			asCALL_THISCALL
 		);
-		//engine->RegisterEnum("FCVAR");
+		engine->RegisterObjectMethod(
+			"SvenEnhancer",
+			"string& SQLiteEscape(string&in input)",
+			asMETHOD(SvenEnhancerAs, SqliteEscape),
+			asCALL_THISCALL
+		);
 		engine->RegisterEnumValue("FCVAR", "FCVAR_NONE", 0);
-		//engine->RegisterEnumValue("FCVAR", "FCVAR_ARCHIVE", FCVAR_ARCHIVE);
-		//engine->RegisterEnumValue("FCVAR", "FCVAR_USERINFO", FCVAR_USERINFO);
-		//engine->RegisterEnumValue("FCVAR", "FCVAR_SERVER", FCVAR_SERVER);
-		//engine->RegisterEnumValue("FCVAR", "FCVAR_EXTDLL", FCVAR_EXTDLL);
-		//engine->RegisterEnumValue("FCVAR", "FCVAR_CLIENTDLL", FCVAR_CLIENTDLL);
-		//engine->RegisterEnumValue("FCVAR", "FCVAR_PROTECTED", FCVAR_PROTECTED);
-		//engine->RegisterEnumValue("FCVAR", "FCVAR_PRINTABLEONLY", FCVAR_PRINTABLEONLY);
-		//engine->RegisterEnumValue("FCVAR", "FCVAR_SPONLY", FCVAR_SPONLY);
-		//engine->RegisterEnumValue("FCVAR", "FCVAR_UNLOGGED", FCVAR_UNLOGGED);
 
 		engine->RegisterObjectMethod(
 			"SvenEnhancer",

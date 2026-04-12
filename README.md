@@ -1,6 +1,8 @@
 # Sven Enhancer
 Sven Enhancer is a Metamod plugin for SvenCoop, this plugin is tested on Windows 11 and Ubuntu(With WSL).
 
+# SQLite And KeyValueStore
+[SEE](https://github.com/ltibm/SvenEnhancer/blob/master/Sq3Kvs.md)
 
 # Events Support
 [SEE](https://github.com/ltibm/SvenEnhancer/blob/master/Events.md)

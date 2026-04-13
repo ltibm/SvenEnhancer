@@ -5,11 +5,19 @@ void PluginInit()
 	g_Module.ScriptInfo.SetAuthor( "S!" );
 	g_Module.ScriptInfo.SetContactInfo( "steam:ibmlt" );
 	g_Hooks.RegisterHook(Hooks::Player::ClientConnected, @ClientConnected);
+
 }
 void QueryUserCountry(const string &in sNick, const string &in sIp)
 {
+	string sip = sIp;
+	int pos = sIp.FindFirstOf(":");
+	if (pos != -1)
+	{
+		sip = sip.SubString(0, pos);
+	}
 	RestRequest@ request = RestRequest();
-	request.Url = "http://ip-api.com/json/" + sIp;
+	request.Url = "http://ip-api.com/json/" + sip;
+	//g_EngineFuncs.ServerPrint(request.Url);
 	/*
 		Although it may appear to be working within an anonymous method scope,
 		the method is actually called externally, 
@@ -29,7 +37,7 @@ void QueryUserCountry(const string &in sNick, const string &in sIp)
 				{
 					string nick;
 					context.UserData.retrieve(nick);
-					string message = SE.Interpolate("{nick} Connected from {country}\n", {{"nick", nick}, {"country", country}});
+					string message = SE.Interpolate("{nick} Connecting from [{country}]\n", {{"nick", nick}, {"country", country}});
 					g_PlayerFuncs.ClientPrintAll(HUD_PRINTTALK, message);
 					g_EngineFuncs.ServerPrint(message);
 				}

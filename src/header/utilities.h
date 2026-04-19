@@ -56,6 +56,98 @@ inline bool isNumericType(int typeId)
 {
 	return typeId >= asTYPEID_INT8 && typeId <= asTYPEID_DOUBLE;
 }
+inline std::string AsGenericFormat(asIScriptGeneric* gen, std::string format, int startIndex = 1)
+{
+	std::string finalResult = "";
+	int currentArg = startIndex;
+	size_t argc = gen->GetArgCount();
+	for (size_t i = 0; i < format.length(); i++) {
+		if (format[i] == '%' && i + 1 < format.length()) {
+
+			if (format[i + 1] == '%') {
+				finalResult += '%'; i++; continue;
+			}
+			size_t start = i;
+			size_t j = i + 1;
+			while (j < format.length() && (isdigit(format[j]) || format[j] == '.' || format[j] == '-' || format[j] == 'l'))
+				j++;
+			char type = format[j];
+			std::string subFormat = format.substr(start, j - start + 1);
+			if (currentArg < argc) {
+				void* addr = gen->GetArgAddress(currentArg++);
+				int typeId = gen->GetArgTypeId(currentArg - 1);
+				char part[1024]{ 0 };
+				int writed = 0;
+				if (type == 'd' || type == 'i' || type == 'u' || type == 'x' || type == 'X') {
+					if (typeId == asTYPEID_INT64 || typeId == asTYPEID_UINT64)
+						writed = snprintf(part, sizeof(part), subFormat.c_str(), *(int64_t*)addr);
+					else if (typeId == asTYPEID_DOUBLE)
+						writed = snprintf(part, sizeof(part), subFormat.c_str(), (int)*(double*)addr);
+					else
+						writed = snprintf(part, sizeof(part), subFormat.c_str(), *(int*)addr);
+
+				}
+				else if (type == 'f' || type == 'g' || type == 'e') {
+					if (typeId == asTYPEID_DOUBLE)
+						writed = snprintf(part, sizeof(part), subFormat.c_str(), *(double*)addr);
+					else
+						writed = snprintf(part, sizeof(part), subFormat.c_str(), (double)*(float*)addr);
+				}
+				else if (type == 's') {
+					CString* s = (CString*)addr;
+					writed = snprintf(part, sizeof(part), subFormat.c_str(), s ? s->c_str() : "");
+					i++;
+				}
+				if (writed > 0)
+					finalResult += part;
+				i = j;
+				continue;
+			}
+		}
+		finalResult += format[i];
+	}
+	return finalResult;
+}
+inline void* GetNumericAsVoid(asIScriptGeneric* gen, int index)
+{
+	if (!gen || !index)
+		return nullptr;
+
+	void* addr = gen->GetArgAddress(index);
+	if (!addr)
+		return nullptr;
+
+	int typeId = gen->GetArgTypeId(index);
+	
+	if (typeId == asTYPEID_BOOL || typeId == asTYPEID_INT8)
+		return (void*)*(asINT8*)addr;
+	if (typeId == asTYPEID_UINT8)
+		return (void*)*(unsigned char*)addr;
+	if (typeId == typeId == asTYPEID_INT16)
+		return (void*)*(asINT16*)addr;
+	if (typeId == typeId == asTYPEID_UINT16)
+		return (void*)*(unsigned short*)addr;
+	if (typeId == asTYPEID_INT32)
+		return (void*)*(asINT32*)addr;
+	if (typeId == asTYPEID_UINT32)
+		return (void*)*(asUINT*)addr;
+	if (typeId == asTYPEID_INT64)
+		return (void*)*(asINT64*)addr;
+	if (typeId == asTYPEID_UINT64)
+		return (void*)*(unsigned long long*)addr;
+	if (typeId == asTYPEID_FLOAT)
+	{
+		void* arg = nullptr;
+		float flVal = *(float*)addr;
+		memcpy(&arg, &flVal, sizeof(float));
+		return arg;
+	}
+
+	if (typeId == asTYPEID_DOUBLE)
+		return (void*)new double(*(double*)addr);
+	return nullptr;
+
+}
 
 inline void* Array_At(CScriptArray* array, asUINT index)
 {

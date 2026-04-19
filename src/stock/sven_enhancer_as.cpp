@@ -593,7 +593,7 @@ void* SvenEnhancerEnt::GetDataByEntity(void* entity)
 	if (!entity)
 		return nullptr;
 	entvars_t* pev = *((entvars_t**)((char*)entity + 4));
-	if (!pev && !pev->pContainingEntity)
+	if (!pev || !pev->pContainingEntity)
 		return nullptr;
 	auto key = ENTINDEX(ENT(pev));
 	return GetData(key);
@@ -724,4 +724,61 @@ void SvenEnhancerEvent::ClearEventByModule(asIScriptModule* module)
 		else
 			++it;
 	}
+}
+
+CScriptArray* SvenEnhancerFile::GetFiles(CString& path, bool includeDirectory, CString& filter, bool recursive)
+{
+	namespace fs = std::filesystem;
+	auto eng = GetASEngine();
+	static asITypeInfo* arrInfoRow = eng->GetTypeInfoByDecl("array<string>");
+	int typeId = arrInfoRow->GetTypeId();
+	auto arr = eng->CreateScriptObject(arrInfoRow);
+	eng->NotifyGarbageCollectorOfNewObject(arr, arrInfoRow);
+	auto method = arrInfoRow->GetMethodByName("insertLast");
+	std::filesystem::path _path(path.c_str());
+	std::filesystem::path rootPath = "./svencoop";
+	fs::path abs_rootPath = fs::absolute("./svencoop");
+	std::filesystem::path full = std::filesystem::weakly_canonical(rootPath / _path);
+	std::regex regexFilter(filter.c_str(), std::regex_constants::icase);
+	auto ctx = eng->RequestContext();
+	auto processEntry = [&](const fs::directory_entry& entry) {
+		if (includeDirectory || !entry.is_directory())
+		{
+			if (filter.empty() || std::regex_match(entry.path().filename().string(), regexFilter))
+			{
+				ctx->Prepare(method);
+				ctx->SetObject(arr);
+				fs::path clientPath = fs::relative(entry.path(), abs_rootPath);
+				//auto _fPath = entry.path().lexically_relative(abs_rootPath).generic_string();
+				std::string _fPath = clientPath.generic_string();
+				CString* str = new CString();
+				str->assign(_fPath.c_str(), _fPath.size());
+				ctx->SetArgAddress(0, str);
+			}
+			ctx->Execute();
+		}	
+	};
+	if (method)
+	{
+		try {
+			if (fs::exists(full) && fs::is_directory(full)) {
+				if (recursive)
+				{
+					for (const auto& entry : fs::recursive_directory_iterator(full)) {
+						processEntry(entry);
+					}
+				}
+				else {
+					for (const auto& entry : fs::directory_iterator(full)) {
+						processEntry(entry);
+					}
+				}
+			}
+		}
+		catch (const fs::filesystem_error& err) {
+		}
+
+	}
+	eng->ReturnContext(ctx);
+	return (CScriptArray*)arr;
 }

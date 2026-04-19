@@ -127,6 +127,7 @@ extern "C" {
 		char msg[100];
 		sprintf(msg, "\nSven Enhancer: v%.2f\n", SE_VERSION_FLOAT);
 		SERVER_PRINT(msg);
+		RegisterSVCvar("svenenhancer_version", SE_VERSION_FLOAT);
 		return TRUE;
 	}
 

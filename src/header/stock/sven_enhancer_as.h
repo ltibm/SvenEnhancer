@@ -73,6 +73,29 @@ struct ParsedEvent
 	std::string name;
 	std::string tag;
 };
+
+class SvenEnhancerFile {
+public:
+	inline bool Exists(CString& path)
+	{
+		namespace fs = std::filesystem;
+		std::filesystem::path _path(path.c_str());
+		std::filesystem::path rootPath = "./svencoop";
+		std::filesystem::path full = std::filesystem::weakly_canonical(rootPath / _path);
+		return fs::exists(full);
+	}
+	inline bool IsDirectory(CString& path)
+	{
+		namespace fs = std::filesystem;
+		std::filesystem::path _path(path.c_str());
+		std::filesystem::path rootPath = "./svencoop";
+		std::filesystem::path full = std::filesystem::weakly_canonical(rootPath / _path);
+		return fs::exists(full) && fs::is_directory(full);
+	}
+	CScriptArray* GetFiles(CString& path, bool includeDirectory, CString& filter, bool recursive = false);
+
+};
+
 class SvenEnhancerEvent {
 
 public:
@@ -128,3 +151,4 @@ public:
 extern SvenEnhancerEnt g_SEEnt;
 extern SvenEnhancerAs* g_SE;
 extern SvenEnhancerEvent g_SEEvent;
+extern SvenEnhancerFile g_SEFile;

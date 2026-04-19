@@ -20,7 +20,8 @@ namespace std {
 #include <meta_api.h>
 #include <cstddef>
 #include <casmodule.h>
-
+#include <entity_state.h>
+#include <usercmd.h>
 #include "signatures.h"
 #include "angelscript_addon.h"
 #include "asext_api.h"

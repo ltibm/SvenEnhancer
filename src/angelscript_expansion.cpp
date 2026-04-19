@@ -9,6 +9,8 @@ SvenEnhancerAs* g_SE = nullptr;
 //SvenEnhancerEnt* g_SEEnt = nullptr;
 SvenEnhancerEnt g_SEEnt;
 SvenEnhancerEvent g_SEEvent;
+SvenEnhancerFile g_SEFile;
+
 
 typedef void (AS_CALL* DiscardFn)(asIScriptModule* pThis);
 DiscardFn oDiscard = nullptr;
@@ -23,20 +25,65 @@ void AS_CALL hookDiscard(asIScriptModule* pThis) {
 }
 static CString* String_Interpolate(CString& str, void* dict)
 {
-	return g_SE->Interpolate(str, (void*) dict);
+	return g_SE->Interpolate(str, (void*)dict);
 }
+inline void* GetEdictData(edict_t* edict)
+{
+	return g_SEEnt.GetDataByEdict(edict);
+}
+inline void* GetEntityData(void* edict)
+{
+	return g_SEEnt.GetDataByEntity(edict);
+}
+inline void SE_Sprintf_Generic(asIScriptGeneric* gen)
+{
+	CString* _format = static_cast<CString*>(gen->GetArgAddress(0));
+	CString* result = new CString();
+	std::string format = _format->c_str();
+	std::string finalResult = AsGenericFormat(gen, format, 1);
+	result->assign(finalResult.c_str(), finalResult.size());
+	gen->SetReturnObject(result);
+}
+inline void SE_Printf_Generic(asIScriptGeneric* gen)
+{
+
+	CString* _format = static_cast<CString*>(gen->GetArgAddress(0));
+	if (_format && !_format->empty())
+	{
+		CString* result = new CString();
+		std::string format = _format->c_str();
+		std::string finalResult = AsGenericFormat(gen, format, 1);
+		result->assign(finalResult.c_str(), finalResult.size());
+		gen->SetReturnObject(result);
+		SERVER_PRINT(result->c_str());
+	}
+}
+inline void SE_Executef_Generic(asIScriptGeneric* gen)
+{
+
+	CString* _format = static_cast<CString*>(gen->GetArgAddress(0));
+	if (_format && !_format->empty())
+	{
+		CString* result = new CString();
+		std::string format = _format->c_str();
+		std::string finalResult = AsGenericFormat(gen, format, 1);
+		result->assign(finalResult.c_str(), finalResult.size());
+		SERVER_COMMAND((char*)result->c_str());
+	}
+}
+
 void AngelScript_Expand() {
 
 	ASEXT_RegisterScriptBuilderDefineCallback([](CScriptBuilder* pScriptBuilder) {
 		ASEXT_CScriptBuilder_DefineWord(pScriptBuilder, "SE");
 		ASEXT_CScriptBuilder_DefineWord(pScriptBuilder, "SE_MYSQL");
-	});
+		});
 
 	ASEXT_RegisterDocInitCallback([](CASDocumentation* pASDoc) {
 		g_SE = new SvenEnhancerAs();
 		asDoc = pASDoc;
 		asIScriptEngine* engine = GetASEngine();
-		
+
 		//Hook module Discard for detecting plugin unload
 		auto tempModule = engine->GetModule("TEMP_MODULE_SE_123", asGM_ALWAYS_CREATE);
 		if (tempModule) {
@@ -60,6 +107,7 @@ void AngelScript_Expand() {
 		engine->RegisterObjectType("SvenEnhancer", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		engine->RegisterObjectType("SvenEnhancerEntity", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		engine->RegisterObjectType("SvenEnhancerEvent", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterObjectType("SvenEnhancerFile", 0, asOBJ_REF | asOBJ_NOCOUNT);
 		//engine->RegisterGlobalFunction("JValue@ JsonParse(string& in input)", asFunctionPtr(Json_Parse), asCALL_CDECL);
 		//engine->RegisterGlobalFunction("JValue@ JsonParseFromFile(string& in path)", asFunctionPtr(Json_ParseFromFile), asCALL_CDECL);
 		//engine->RegisterGlobalFunction("JValue@ JsonParseFromObject(ref @)", asFunctionPtr(Json_ParseObject), asCALL_CDECL);
@@ -87,6 +135,7 @@ void AngelScript_Expand() {
 			asFUNCTION(String_Interpolate),
 			asCALL_CDECL_OBJFIRST
 		);
+
 		engine->RegisterObjectMethod("SvenEnhancer", "string& get_VERSION() const", asMETHOD(SvenEnhancerAs, Version), asCALL_THISCALL);
 
 		engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParse(string& in input)", asMETHOD(SvenEnhancerAs, Json_Parse), asCALL_THISCALL);
@@ -200,6 +249,24 @@ void AngelScript_Expand() {
 			asCALL_THISCALL
 		);
 
+		engine->RegisterObjectMethod(
+			"SvenEnhancerFile",
+			"array<string>& GetFiles(string&in path, bool includeDirectory = false, string&in filter = \"\", bool recursive = false)",
+			asMETHOD(SvenEnhancerFile, GetFiles),
+			asCALL_THISCALL
+		);
+		engine->RegisterObjectMethod(
+			"SvenEnhancerFile",
+			"bool Exists(string&in path)",
+			asMETHOD(SvenEnhancerFile, Exists),
+			asCALL_THISCALL
+		);
+		engine->RegisterObjectMethod(
+			"SvenEnhancerFile",
+			"bool IsDirectory(string&in path)",
+			asMETHOD(SvenEnhancerFile, IsDirectory),
+			asCALL_THISCALL
+		);
 
 		ASEXT_RegisterFuncDef(pASDoc, "callback for ClientCmd", "int ClientCmdCallback(edict_t@ edict, CallbackItem@ item = null)");
 		engine->RegisterObjectMethod(
@@ -261,11 +328,81 @@ void AngelScript_Expand() {
 			asMETHOD(SvenEnhancerAs, GetCvar),
 			asCALL_THISCALL
 		);
+		engine->RegisterObjectMethod(
+			"CBaseEntity",
+			"dictionary@+ GetData()",
+			asFunctionPtr(GetEntityData),
+			asCALL_CDECL_OBJFIRST
+		);
+		engine->RegisterObjectMethod(
+			"CBasePlayer",
+			"dictionary@+ GetData()",
+			asFunctionPtr(GetEntityData),
+			asCALL_CDECL_OBJFIRST
+		);
+		engine->RegisterObjectMethod(
+			"CBaseMonster",
+			"dictionary@+ GetData()",
+			asFunctionPtr(GetEntityData),
+			asCALL_CDECL_OBJFIRST
+		);
+		engine->RegisterObjectMethod(
+			"edict_t",
+			"dictionary@+ GetData()",
+			asFunctionPtr(GetEdictData),
+			asCALL_CDECL_OBJFIRST
+		);
+
+		for (int i = 0; i <= 11; i++)
+		{
+			std::string sig = "string Sprintf(const string &in format";
+			for (int x = 0; x < i; x++)
+				sig += ", ?&in";
+			sig += ")";
+			engine->RegisterObjectMethod(
+				"SvenEnhancer",
+				sig.c_str(),
+				asFUNCTION(SE_Sprintf_Generic),
+				asCALL_GENERIC
+			);
+		}
+		for (int i = 0; i <= 11; i++)
+		{
+			std::string sig = "void Printf(const string &in format";
+			for (int x = 0; x < i; x++)
+				sig += ", ?&in";
+			sig += ")";
+			engine->RegisterObjectMethod(
+				"SvenEnhancer",
+				sig.c_str(),
+				asFUNCTION(SE_Printf_Generic),
+				asCALL_GENERIC
+			);
+		}
+		for (int i = 0; i <= 11; i++)
+		{
+			std::string sig = "void Commandf(const string &in format";
+			for (int x = 0; x < i; x++)
+				sig += ", ?&in";
+			sig += ")";
+			engine->RegisterObjectMethod(
+				"SvenEnhancer",
+				sig.c_str(),
+				asFUNCTION(SE_Executef_Generic),
+				asCALL_GENERIC
+			);
+		}
+
 		ASEXT_RegisterGlobalProperty(pASDoc, "Sven Enhancer", "SvenEnhancer@ SE", &g_SE);
 		ASEXT_RegisterGlobalProperty(pASDoc, "Sven Enhancer Entity", "SvenEnhancerEntity SE_ENT", &g_SEEnt);
 		ASEXT_RegisterGlobalProperty(pASDoc, "Sven Enhancer Event", "SvenEnhancerEvent SE_EVENT", &g_SEEvent);
+		ASEXT_RegisterGlobalProperty(pASDoc, "Sven Enhancer File", "SvenEnhancerFile SE_FILE", &g_SEFile);
 		});
 }
+
+
+
+
 static std::unordered_set<std::string> ignored_clcmds = {
 
 };

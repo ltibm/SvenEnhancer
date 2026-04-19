@@ -134,7 +134,7 @@ static DLL_FUNCTIONS gFunctionTable = {
 
 	NULL,					// pfnSetupVisibility
 	NULL,					// pfnUpdateClientData
-	NULL,					// pfnAddToFullPack
+	NULL,	// pfnAddToFullPack
 	NULL,					// pfnCreateBaseline
 	NULL,					// pfnRegisterEncoders
 	NULL,					// pfnGetWeaponData

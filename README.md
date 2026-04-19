@@ -45,6 +45,34 @@ SvenEnhancer provides some AngelScript enhancements for SvenCoop. The current fe
 - A globals variable has been added, which can be used by all plugins
 - For more details, you can check the SamplePlugin folder
 
+# File functions
+```angelscript
+//Check file is exists;
+bool exists = SE_FILE.Exists("scripts/plugins/mycfg.ini");
+
+//Check path is directory
+bool isDir = SE_FILE.IsDirectory("scripts/plugins");
+
+//Get files from directory
+//array<string>& GetFiles(string&in path, bool includeDirectory = false, string&in filter = \"\", bool recursive = false);
+//Fiter must be regex pattern
+array<string> files = SE_FILE.GetFiles("scripts");
+SE.Printf("Total files: %d\n", files.length());
+```
+
+# String Formats Like printf and sprintf
+```angelscript
+	//All print and sprint commands max parameters limit is 10
+	//Printing to console
+	SE.Printf("%-15s, %d, %f, %s %d\n", "Test", 16374, 161.0f, "Same", 3144);
+
+	//Executing server command
+	SE.Commandf("%s %d\n", "sv_cheats", 255);
+
+	//String formattting
+	string formatted = SE.Sprintf("%s %d\n", "sv_cheats", 255);
+```
+
 # Globals
  ```angelscript
     //Global property

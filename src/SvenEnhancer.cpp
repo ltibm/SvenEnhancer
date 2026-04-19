@@ -73,6 +73,10 @@ extern "C" {
 		META_FUNCTIONS* pFunctionTable, meta_globals_t* pMGlobals,
 		gamedll_funcs_t* pGamedllFuncs)
 	{
+#ifdef _WIN32
+		SetConsoleOutputCP(65001);
+		SetConsoleCP(65001);
+#endif
 		if (!pMGlobals) {
 			LOG_ERROR(PLID, "Meta_Attach called with null pMGlobals");
 			return FALSE;

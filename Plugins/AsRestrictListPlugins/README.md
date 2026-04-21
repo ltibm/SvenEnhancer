@@ -1,10 +1,10 @@
 # Description
 
-Show Connection User Country To All Users
+Prevents as_listplugins command fron non admin players
 
 # Requirements
 
-SvenEnhancer Min v0.60
+SvenEnhancer Min v0.90
 
 # Installation
 

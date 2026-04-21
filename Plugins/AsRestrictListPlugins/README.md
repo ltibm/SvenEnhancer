@@ -1,6 +1,6 @@
 # Description
 
-Prevents as_listplugins command from non admin players
+Prevent **as_listplugins** command from non admin players
 
 # Requirements
 

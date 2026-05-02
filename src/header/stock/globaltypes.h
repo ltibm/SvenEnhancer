@@ -1,8 +1,8 @@
 #pragma once
 
-#define SE_VERSION_FLOAT 0.94
-#define SE_VERSION "0.94"
-#define SE_DATE "19.04.2026"
+#define SE_VERSION_FLOAT 1.01f
+#define SE_VERSION "1.01"
+#define SE_DATE "02.05.2026"
 #define SE_PRINT(msg) \
     g_engfuncs.pfnServerPrint("[Sven Enhancer] " msg "\r\n")
 
@@ -10,6 +10,7 @@ extern int AS_TYPEID_STRING;
 extern int AS_TYPEID_STRING_T;
 extern int AS_TYPEID_ARRAY;
 extern int AS_TYPEID_DICTIONARY;
+extern int AS_TYPEID_DICTIONARY_HANDLE;
 extern int AS_TYPEID_DATETIME;
 extern int AS_TYPEID_ANY;
 extern int AS_TYPEID_ARRAY_ANY;
@@ -20,7 +21,11 @@ void InitializeGlobalTypes(asIScriptEngine* engine);
 
 #define REGISTE_OBJMETHODEX(r, d, e, c, m, cc, mm, call) r=asMETHOD(cc,mm);ASEXT_RegisterObjectMethodEx(d,e,c,m,&r,call)
 #define REGISTE_OBJMETHODPREX(r, d, e, c, m, cc, mm, pp, rr, call) r=asMETHODPR(cc,mm, pp, rr);ASEXT_RegisterObjectMethodEx(d,e,c,m,&r,call)
-
+#ifdef _WIN32
+#define AS_STRDUP _strdup
+#else
+#define AS_STRDUP strdup
+#endif
 
 
 template <typename T>

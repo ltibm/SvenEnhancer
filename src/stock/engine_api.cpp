@@ -38,6 +38,7 @@
 #include <extdll.h>
 #include <meta_api.h>
 #include <angelscript_expansion.h>
+#include <message.h>
 
 #pragma region PreHooks
 static int SV_ModelIndex(const char* m) {
@@ -103,18 +104,16 @@ enginefuncs_t meta_engfuncs = {
 	NULL,						// pfnDecalIndex()
 	NULL,						// pfnPointContents()
 
-	NULL,						// pfnMessageBegin()
-	NULL,						// pfnMessageEnd()
-
-	NULL,						// pfnWriteByte()
-	NULL,						// pfnWriteChar()
-	NULL,						// pfnWriteShort()
-	NULL,						// pfnWriteLong()
-	NULL,						// pfnWriteAngle()
-	NULL,						// pfnWriteCoord()
-	NULL,						// pfnWriteString()
-	NULL,						// pfnWriteEntity()
-
+	Hook_MessageBegin,			// pfnMessageBegin()
+	Hook_Messageend,			// pfnMessageEnd()
+	Hook_WriteByte,						// pfnWriteByte()
+	Hook_WriteChar,						// pfnWriteChar()
+	Hook_WriteShort,						// pfnWriteShort()
+	Hook_WriteLong,						// pfnWriteLong()
+	Hook_WriteAngle,						// pfnWriteAngle()
+	Hook_WriteCoord,						// pfnWriteCoord()
+	Hook_WriteString,						// pfnWriteString()
+	Hook_WriteEntity,						// pfnWriteEntity()
 	NULL,						// pfnCVarRegister()
 	NULL,						// pfnCVarGetFloat()
 	NULL,						// pfnCVarGetString()
@@ -254,6 +253,8 @@ enginefuncs_t meta_engfuncs = {
 	// Added 2009-06-17 (no SDK update)
 	NULL,						// pfnEngCheckParm()
 };
+
+
 C_DLLEXPORT int GetEngineFunctions(enginefuncs_t* pengfuncsFromEngine,
 	int* interfaceVersion)
 {
@@ -268,7 +269,6 @@ C_DLLEXPORT int GetEngineFunctions(enginefuncs_t* pengfuncsFromEngine,
 		return false;
 	}
 	memcpy(pengfuncsFromEngine, &meta_engfuncs, sizeof(enginefuncs_t));
-
 	return TRUE;
 }
 #pragma endregion

@@ -1,10 +1,199 @@
 #pragma once
+#include <filesystem>
 inline asIScriptEngine* GetASEngine() {
 	CASServerManager* manager = ASEXT_GetServerManager();
 	asIScriptEngine* engine = manager->scriptEngine;
 	return engine;
 }
+enum class ArgType
+{
+	Int,
+	UInt64,
+	Bool,
+	Float,
+	Double,
+	Object,
+	String
+};
 
+struct DynamicArg
+{
+	ArgType type;
+	int intVal{};
+	uint64_t qwordVal{};
+	bool boolVal{};
+	float floatVal{};
+	double doubleVal{};
+	void* objVal{};
+	std::string strVal{};
+};
+
+inline bool AS_SetDynamicArg(asIScriptContext* ctx,
+	asUINT index,
+	int typeId,
+	const DynamicArg& arg)
+{
+	if (typeId == asTYPEID_INT32 && arg.type == ArgType::Int)
+		return ctx->SetArgDWord(index, arg.intVal) >= 0;
+
+	if (typeId == asTYPEID_UINT64 && arg.type == ArgType::UInt64)
+		return ctx->SetArgQWord(index, arg.qwordVal) >= 0;
+
+	if (typeId == asTYPEID_BOOL && arg.type == ArgType::Bool)
+		return ctx->SetArgByte(index, arg.boolVal ? 1 : 0) >= 0;
+
+	if (typeId == asTYPEID_FLOAT && arg.type == ArgType::Float)
+		return ctx->SetArgFloat(index, arg.floatVal) >= 0;
+
+	if (typeId == asTYPEID_DOUBLE && arg.type == ArgType::Double)
+		return ctx->SetArgDouble(index, arg.doubleVal) >= 0;
+
+	if ((typeId & asTYPEID_MASK_OBJECT) && arg.type == ArgType::Object)
+		return ctx->SetArgObject(index, arg.objVal) >= 0;
+	if ((typeId & AS_TYPEID_STRING) && arg.type == ArgType::String)
+	{
+		CString* str = new CString();
+		str->assign(arg.strVal.c_str(), arg.strVal.size());
+		return ctx->SetArgObject(index,str) >= 0;
+
+	}
+	return false;
+}
+inline bool AS_IsFunctionSignatureValid(asIScriptFunction* func,
+	const std::string& sig,
+	const std::string& returnType = "")
+{
+	if (!func)
+		return false;
+
+	struct ExpectedParam
+	{
+		std::string type;
+		bool isRef = false;
+		bool isHandle = false;
+	};
+
+	std::vector<ExpectedParam> expected;
+
+	std::stringstream ss(sig);
+	std::string item;
+
+	while (std::getline(ss, item, ','))
+	{
+		// trim
+		while (!item.empty() && std::isspace((unsigned char)item.front()))
+			item.erase(item.begin());
+		while (!item.empty() && std::isspace((unsigned char)item.back()))
+			item.pop_back();
+
+		if (item.empty())
+			continue;
+		size_t lastSpace = item.find_last_of(' ');
+		if (lastSpace != std::string::npos)
+		{
+			std::string last = item.substr(lastSpace + 1);
+
+			if (last.find('&') == std::string::npos &&
+				last.find("::") == std::string::npos)
+			{
+				item = item.substr(0, lastSpace);
+
+				while (!item.empty() &&
+					std::isspace((unsigned char)item.back()))
+				{
+					item.pop_back();
+				}
+			}
+		}
+
+		ExpectedParam p;
+		if (item.rfind("ref ", 0) == 0)
+		{
+			p.isRef = true;
+			item = item.substr(4);
+		}
+
+		if (item.rfind("const ", 0) == 0)
+		{
+			item = item.substr(6);
+		}
+
+		size_t handlePos = item.find('@');
+		if (handlePos != std::string::npos)
+		{
+			p.isHandle = true;
+			//item.erase(handlePos, 1);
+		}
+
+		size_t refPos = item.find('&');
+		if (refPos != std::string::npos)
+		{
+			p.isRef = true;
+			item = item.substr(0, refPos);
+
+			while (!item.empty() &&
+				std::isspace((unsigned char)item.back()))
+				item.pop_back();
+		}
+
+		// final trim
+		while (!item.empty() && std::isspace((unsigned char)item.front()))
+			item.erase(item.begin());
+		while (!item.empty() && std::isspace((unsigned char)item.back()))
+			item.pop_back();
+
+		p.type = item;
+
+		expected.push_back(p);
+	}
+
+	if (func->GetParamCount() != expected.size())
+		return false;
+
+	for (asUINT i = 0; i < func->GetParamCount(); ++i)
+	{
+		int typeId;
+		asDWORD flags;
+		const char* name = nullptr;
+		const char* def = nullptr;
+
+		if (func->GetParam(i, &typeId, &flags, &name, &def) < 0)
+			return false;
+
+		const auto& exp = expected[i];
+
+		std::string realType =
+			func->GetEngine()->GetTypeDeclaration(typeId);
+
+		bool realIsHandle = (typeId & asTYPEID_OBJHANDLE) != 0;
+
+		bool realIsRef =
+			(flags & asTM_INREF) ||
+			(flags & asTM_OUTREF) ||
+			(flags & asTM_INOUTREF);
+
+		if (realType != exp.type)
+			return false;
+
+		if (realIsHandle != exp.isHandle)
+			return false;
+
+		if (realIsRef != exp.isRef)
+			return false;
+	}
+	if (!returnType.empty())
+	{
+		int retTypeId = func->GetReturnTypeId();
+
+		std::string realReturn =
+			func->GetEngine()->GetTypeDeclaration(retTypeId);
+
+		if (realReturn != returnType)
+			return false;
+	}
+
+	return true;
+}
 inline asITypeInfo* GetASGlobalTypeByName(const char* name)
 {
 	asIScriptEngine* engine = GetASEngine();
@@ -43,7 +232,10 @@ inline std::vector<std::string> split(std::string s, std::string delimiter) {
 	res.push_back(s.substr(pos_start));
 	return res;
 }
-
+inline bool IsFloatingType(int typeId)
+{
+	return typeId == asTYPEID_FLOAT || typeId == asTYPEID_DOUBLE;
+}
 inline bool isPrimviteType(int typeId)
 {
 	return typeId == AS_TYPEID_DATETIME || typeId == AS_TYPEID_STRING || typeId <= asTYPEID_DOUBLE || typeId == AS_TYPEID_STRING_T;
@@ -55,6 +247,13 @@ inline bool isSpecialType(int typeId)
 inline bool isNumericType(int typeId)
 {
 	return typeId >= asTYPEID_INT8 && typeId <= asTYPEID_DOUBLE;
+}
+inline std::string AsGetPath(std::string filePath)
+{
+	std::filesystem::path _path(filePath);
+	std::filesystem::path rootPath = "./svencoop";
+	std::filesystem::path full = std::filesystem::weakly_canonical(rootPath / _path);
+	return full.string();
 }
 inline std::string AsGenericFormat(asIScriptGeneric* gen, std::string format, int startIndex = 1)
 {

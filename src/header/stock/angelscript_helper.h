@@ -1,3 +1,5 @@
+#pragma once
+typedef CString dictKey_t;
 
 class CScriptAny2 : public CASBaseGCObject
 {
@@ -42,7 +44,57 @@ public:
 	int m_typeId;
 
 };
+#if AS_CAN_USE_CPP11
+#include <unordered_map>
+typedef std::unordered_map<dictKey_t, AS_NAMESPACE_QUALIFIER CScriptDictValue> dictMap_t;
+#else
+#include <map>
+typedef std::map<dictKey_t, AS_NAMESPACE_QUALIFIER CScriptDictValue> dictMap_t;
+#endif
+#pragma pack(push, 1)
+inline uint32_t GetHash(const char* str) {
+	if (!str) return 0;
+	uint32_t len = strlen(str);
+	uint32_t hash = 0x811C9DC5;
+	const uint32_t fnvPrime = 0x01000193;
+	uint32_t step = (len / 10) + 1;
+	for (uint32_t i = 0; i < len; i += step) {
+		hash *= fnvPrime;
+		hash ^= (uint8_t)str[i];
+	}
+	return hash;
+}
+struct DictionaryNode {
+	DictionaryNode* pNext;
+	DictionaryNode* pPrev;
+	char szInlineKey[20];
+	char* pszRefKey;
+	uint8_t pad_to_value[16];
+	union {
+		int32_t   iVal;
+		float     fVal;
+		long long llVal;
+		void* pPtr;
+		double    dVal;
+		uintptr_t uVal;
+	} value;
+	int32_t typeId;
+};
 
+struct CScriptDictinarySE {
+	void* pVtable;
+	void* pUnk;
+	void* pUnk1;
+	double dUnk;
+	DictionaryNode* g_Iterator;
+	int32_t size;
+	DictionaryNode** ppBuckets;
+	int32_t unk20; 
+	int32_t unk24;
+    int32_t bucketMask; 
+    int32_t bucketCount;
+};
+#pragma pack(pop)
 class CDictHelper {
 public:
 	CDictHelper(void* base);
@@ -147,9 +199,97 @@ int RegisterObject(const char* name, asIScriptEngine* engine, int flags)
 	return r;
 }
 static asITypeInfo* stringType = nullptr;
+inline CScriptAny2* CreateAny()
+{
+	auto engine = GetASEngine();
+	static asITypeInfo* anyType = engine->GetTypeInfoByDecl("any");
+	auto any = engine->CreateScriptObject(anyType);
+	CScriptAny2* s = reinterpret_cast<CScriptAny2*>(any);
+	//CAnyHelper* helper = new CAnyHelper(s);
+	engine->NotifyGarbageCollectorOfNewObject(any, anyType);
+	return s;
+}
+template<typename T>
+inline std::string GetASName();
+
+template<>
+inline std::string GetASName<int>() { return "int"; }
+
+template<>
+inline std::string GetASName<float>() { return "float"; }
+
+template<>
+inline std::string GetASName<std::string>() { return "string"; }
+template<>
+inline std::string GetASName<CString>() { return "string"; }
+
+template<typename T>
+struct ASArgSetter;
+
+template<>
+struct ASArgSetter<std::string>
+{
+	static void Set(asIScriptContext* ctx, const std::string& item)
+	{
+		CString* s = new CString();
+		s->assign(item.c_str(), item.length());
+		ctx->SetArgObject(0, s);
+	}
+};
+template<>
+struct ASArgSetter<CString>
+{
+	static void Set(asIScriptContext* ctx, const CString& item)
+	{
+		ctx->SetArgObject(0, (void*)&item);
+	}
+};
+template<>
+struct ASArgSetter<float>
+{
+	static void Set(asIScriptContext* ctx, float item)
+	{
+		ctx->SetArgFloat(0, item);
+	}
+};
+template<>
+struct ASArgSetter<int>
+{
+	static void Set(asIScriptContext* ctx, int item)
+	{
+		ctx->SetArgDWord(0, item);
+	}
+};
+
+template<typename T>
+void* CreateASArray_FromVector(const std::vector<T>& vec)
+{
+	std::string decl = "array<" + GetASName<T>() + ">";
+	auto eng = GetASEngine();
+	static asITypeInfo* arrInfo = eng->GetTypeInfoByDecl(decl.c_str());
+	int typeId = arrInfo->GetTypeId();
+	auto arr = eng->CreateScriptObject(arrInfo);
+	eng->NotifyGarbageCollectorOfNewObject(arr, arrInfo);
+	auto ctx = eng->RequestContext();
+	auto method = arrInfo->GetMethodByName("insertLast");
+	for (auto& item : vec) {
+		ctx->Prepare(method);
+		ctx->SetObject(arr);
+		ASArgSetter<T>::Set(ctx, item);
+		ctx->Execute();
+		ctx->Unprepare();
+	}
+	eng->ReturnContext(ctx);
+	return arr;
+}
 inline CString* CreateString(const char* text)
 {
 	CString* resp = new CString();
+	if(!text)
+	{
+		resp->assign("", 0);
+		return resp;
+	}
 	//auto engine = GetASEngine();
 	//auto type = stringType ? stringType : stringType = engine->GetTypeInfoByName("string");
 	//auto resp = static_cast<CString*>(engine->CreateScriptObject(type));

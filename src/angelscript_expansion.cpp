@@ -3,6 +3,9 @@
 #include <mysql_sven.h>
 #include <callbackitem.h>
 #include <sqlite3_sven.h>
+#include <message.h>
+#include <gameevents.h>
+#include <tvalue.h>
 
 CASDocumentation* asDoc = nullptr;
 SvenEnhancerAs* g_SE = nullptr;
@@ -17,11 +20,11 @@ DiscardFn oDiscard = nullptr;
 static bool is_hooking = true;
 void AS_CALL hookDiscard(asIScriptModule* pThis) {
 	//Now we can access plugin unload
-
-	if (oDiscard)
-		oDiscard(pThis);
 	if (!is_hooking && pThis)
 		Angelscript_OnModuleDiscard(pThis);
+	if (oDiscard)
+		oDiscard(pThis);
+
 }
 static CString* String_Interpolate(CString& str, void* dict)
 {
@@ -71,6 +74,159 @@ inline void SE_Executef_Generic(asIScriptGeneric* gen)
 		SERVER_COMMAND((char*)result->c_str());
 	}
 }
+static asINT64 Dict_GetLong(void* dict, CString& key)
+{
+	CDictHelper helper(dict);
+	CScriptDictValue* v = helper.getByName(key);
+	if (!v)
+		return 0;
+	int typeId = v->GetTypeId();
+	if (isNumericType(typeId))
+	{
+		if (IsFloatingType(typeId))
+		{
+			double val = v->m_valueFlt;
+			return (asINT64)val;
+		}
+		else
+			return v->m_valueInt;
+	}
+	return 0;
+}
+static asINT32 Dict_GetInt(void* dict, CString& key)
+{
+	CDictHelper helper(dict);
+	CScriptDictValue* v = helper.getByName(key);
+	if (!v)
+		return 0;
+	int typeId = v->GetTypeId();
+	if (isNumericType(typeId))
+	{
+		if (IsFloatingType(typeId))
+		{
+			double val = v->m_valueFlt;
+			return (asINT32)val;
+		}
+		else
+			return v->m_valueInt;
+	}
+	return 0;
+}
+static float Dict_GetFloat(void* dict, CString& key)
+{
+	CDictHelper helper(dict);
+	CScriptDictValue* v = helper.getByName(key);
+	if (!v)
+		return 0;
+	int typeId = v->GetTypeId();
+	if (isNumericType(typeId))
+	{
+		if (IsFloatingType(typeId))
+		{
+			double val = v->m_valueFlt;
+			return (float)val;
+		}
+		else
+			return (float) v->m_valueInt;
+	}
+	return 0;
+}
+static void* Dict_GetDict(void* dict, CString& key)
+{
+	CDictHelper helper(dict);
+	CScriptDictValue* v = helper.getByName(key);
+	if (!v)
+		return nullptr;
+	int typeId = v->GetTypeId();
+	if (typeId == AS_TYPEID_DICTIONARY)
+	{
+		auto obj = (void*)v->GetAddressOfValue();
+		GetASEngine()->AddRefScriptObject(obj, GetASEngine()->GetTypeInfoById(typeId));
+		return obj;
+	}
+	if (typeId == AS_TYPEID_DICTIONARY_HANDLE)
+	{
+		return v->m_valueObj;
+	}
+	return nullptr;
+}
+static double Dict_GetDouble(void* dict, CString& key)
+{
+	CDictHelper helper(dict);
+	CScriptDictValue* v = helper.getByName(key);
+	if (!v)
+		return 0;
+	int typeId = v->GetTypeId();
+	if (isNumericType(typeId))
+	{
+		if (IsFloatingType(typeId))
+		{
+			double val = v->m_valueFlt;
+			return (double)val;
+		}
+		else
+			return (double)v->m_valueInt;
+	}
+	return 0;
+}
+static void* Dict_GetString(void* dict, CString& key)
+{
+	CDictHelper helper(dict);
+	CScriptDictValue* v = helper.getByName(key);
+	if (!v)
+		return CreateString("");
+	int typeId = v->GetTypeId();
+	if (typeId == AS_TYPEID_STRING)
+	{
+		return (void*)v->GetAddressOfValue();
+	}
+	std::string out;
+	if (typeId == asTYPEID_INT8)
+	{
+		out = std::to_string(*(char*)v->GetAddressOfValue()).c_str();
+	}
+	else if (typeId == asTYPEID_INT16)
+	{
+		out = std::to_string(*(short*)v->GetAddressOfValue()).c_str();
+	}
+	else if (typeId == asTYPEID_INT32)
+	{
+		out = std::to_string(*(int*)v->GetAddressOfValue()).c_str();
+	}
+	else if (typeId == asTYPEID_INT64)
+	{
+		out = std::to_string(*(asINT64*)v->GetAddressOfValue()).c_str();
+	}
+	else if (typeId == asTYPEID_UINT8)
+	{
+		out = std::to_string(*(unsigned char*)v->GetAddressOfValue()).c_str();
+	}
+	else if (typeId == asTYPEID_UINT16)
+	{
+		out = std::to_string(*(unsigned short*)v->GetAddressOfValue()).c_str();
+	}
+	else if (typeId == asTYPEID_UINT32)
+	{
+		out = std::to_string(*(unsigned int*)v->GetAddressOfValue()).c_str();
+	}
+	else if (typeId == asTYPEID_UINT64)
+	{
+		out = std::to_string(*(asQWORD*)v->GetAddressOfValue()).c_str();
+	}
+	else if (typeId == asTYPEID_FLOAT)
+	{
+		out = std::to_string(*(float*)v->GetAddressOfValue()).c_str();
+	}
+	else if (typeId == asTYPEID_DOUBLE)
+	{
+		out = std::to_string(*(double*)v->GetAddressOfValue()).c_str();
+	}
+	else if (typeId == asTYPEID_BOOL)
+	{
+		out = (*(bool*)v->GetAddressOfValue()) ? "true" : "false";
+	}
+	return CreateString(out.c_str());
+}
 
 void AngelScript_Expand() {
 
@@ -78,6 +234,12 @@ void AngelScript_Expand() {
 		ASEXT_CScriptBuilder_DefineWord(pScriptBuilder, "SE");
 		ASEXT_CScriptBuilder_DefineWord(pScriptBuilder, "SE_MYSQL");
 		});
+
+
+	ASEXT_RegisterDirInitCallback([](CASDirectoryList* pASDirList) {
+		//ASEXT_CreateDirectory(pASDirList, "test/path", ASFlag_Plugin, ASFileAccessControl_Read | ASFileAccessControl_Write, true, 0);
+
+	});
 
 	ASEXT_RegisterDocInitCallback([](CASDocumentation* pASDoc) {
 		g_SE = new SvenEnhancerAs();
@@ -113,8 +275,12 @@ void AngelScript_Expand() {
 		//engine->RegisterGlobalFunction("JValue@ JsonParseFromObject(ref @)", asFunctionPtr(Json_ParseObject), asCALL_CDECL);
 
 		RegisterJValue(engine);
+		RegisterTValue(engine);
 		RegisterMysqlAngelScript(engine);
 		RegisterSqliteAngelScript(engine);
+		RegisterSEMessageContext(pASDoc, engine);
+		RegisterSEEventsContext(pASDoc, engine);
+
 		//Register RestClient
 		RestClient::RegisterAngelScript(pASDoc, engine);
 		RegisterCallBackItem(pASDoc, engine);
@@ -137,10 +303,14 @@ void AngelScript_Expand() {
 		);
 
 		engine->RegisterObjectMethod("SvenEnhancer", "string& get_VERSION() const", asMETHOD(SvenEnhancerAs, Version), asCALL_THISCALL);
+		engine->RegisterObjectMethod("SvenEnhancer", "string& InfoKeyValue(string&in info, string&in key) const", asMETHOD(SvenEnhancerAs, InfoKeyValue), asCALL_THISCALL);
 
 		engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParse(string& in input)", asMETHOD(SvenEnhancerAs, Json_Parse), asCALL_THISCALL);
 		engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParseFromFile(string& in path)", asMETHOD(SvenEnhancerAs, Json_ParseFromFile), asCALL_THISCALL);
 		engine->RegisterObjectMethod("SvenEnhancer", "JValue@ JsonParseFromObject(?&in obj)", asMETHOD(SvenEnhancerAs, Json_ParseObjectV2), asCALL_THISCALL);
+
+		engine->RegisterObjectMethod("SvenEnhancer", "TValue@ TomlParse(string& in input)", asMETHOD(SvenEnhancerAs, Toml_Parse), asCALL_THISCALL);
+		engine->RegisterObjectMethod("SvenEnhancer", "TValue@ TomlParseFromFile(string& in path)", asMETHOD(SvenEnhancerAs, Toml_ParseFromFile), asCALL_THISCALL);
 
 		engine->RegisterObjectMethod("SvenEnhancer", "bool MySql_Loaded()", asMETHOD(SvenEnhancerAs, MySql_Loaded), asCALL_THISCALL);
 		engine->RegisterObjectMethod("SvenEnhancer", "MySqlConnection@ MySql_CreateConnection(MySqlConnectionConfig& in config)", asMETHOD(SvenEnhancerAs, MySqlConnection_Create), asCALL_THISCALL);
@@ -397,7 +567,27 @@ void AngelScript_Expand() {
 		ASEXT_RegisterGlobalProperty(pASDoc, "Sven Enhancer Entity", "SvenEnhancerEntity SE_ENT", &g_SEEnt);
 		ASEXT_RegisterGlobalProperty(pASDoc, "Sven Enhancer Event", "SvenEnhancerEvent SE_EVENT", &g_SEEvent);
 		ASEXT_RegisterGlobalProperty(pASDoc, "Sven Enhancer File", "SvenEnhancerFile SE_FILE", &g_SEFile);
-		});
+
+
+		engine->RegisterObjectMethod(
+			"dictionary","string& GetString(string&in key) const",asFUNCTION(Dict_GetString),asCALL_CDECL_OBJFIRST
+		);
+		engine->RegisterObjectMethod(
+			"dictionary", "int GetInt(string&in key) const", asFUNCTION(Dict_GetInt), asCALL_CDECL_OBJFIRST
+		);
+		engine->RegisterObjectMethod(
+			"dictionary", "int64 GetLong(string&in key) const", asFUNCTION(Dict_GetLong), asCALL_CDECL_OBJFIRST
+		);
+		engine->RegisterObjectMethod(
+			"dictionary", "float GetFloat(string&in key) const", asFUNCTION(Dict_GetFloat), asCALL_CDECL_OBJFIRST
+		);
+		engine->RegisterObjectMethod(
+			"dictionary", "float GetDouble(string&in key) const", asFUNCTION(Dict_GetDouble), asCALL_CDECL_OBJFIRST
+		);
+		engine->RegisterObjectMethod(
+			"dictionary", "dictionary@ GetDict(string&in key) const", asFUNCTION(Dict_GetDict), asCALL_CDECL_OBJFIRST
+		);
+	});
 }
 
 
@@ -408,6 +598,18 @@ static std::unordered_set<std::string> ignored_clcmds = {
 };
 bool Angelscript_ClientCommand(edict_t* edict) {
 	std::string cmd = CMD_ARGV(0);
+	if (cmd == "svenenhancer")
+	{
+		char msg[150];
+		sprintf(msg, "Sven Enhancer: v%.2f\nDate: %s\n", SE_VERSION_FLOAT, SE_DATE);
+		CLIENT_PRINTF(
+			edict,
+			print_console,
+			msg
+		);
+		SET_META_RESULT(MRES_SUPERCEDE);
+		return true;
+	}
 	if (ignored_clcmds.contains(cmd))
 	{
 		return false;
@@ -438,8 +640,7 @@ void Angelscript_ServerDeactivate()
 }
 
 void Angelscript_ClientDisconnect(edict_t* edict) {
-	if (!edict || !edict->pvPrivateData)
-		return;
+	if (!edict) return;
 	//Clear player data
 	g_SEEnt.ClearPlayerData(ENTINDEX(edict));
 }

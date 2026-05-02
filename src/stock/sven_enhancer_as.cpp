@@ -2,6 +2,7 @@
 #include <mysql_sven.h>
 #include <callbackitem.h>
 #include <sqlite3_sven.h>
+#include <tvalue.h>
 
 std::unordered_map<std::string, std::vector<ClientCmdEntry>> m_ClientCmds;
 std::unordered_map<std::string, std::vector<ServerCmdEntry>> m_ServerCmds;
@@ -29,6 +30,7 @@ SvenEnhancerAs::~SvenEnhancerAs() {
 }
 void* SvenEnhancerAs::getGlobals()
 {
+	//CScriptDictinarySE* dict = (CScriptDictinarySE*)pDictionary->data;
 	//this->AddRef();
 	return pDictionary->data;
 }
@@ -53,7 +55,6 @@ JValue* SvenEnhancerAs::Json_ParseFromFile(CString& input) {
 		printf("error when parsing: %s\r\n", e.what());
 	}
 	return nullptr;
-
 }
 
 JValue* SvenEnhancerAs::Json_Parse(CString& input) {
@@ -130,6 +131,19 @@ CString* SvenEnhancerAs::BASE64Decode(CString& data)
 {
 	auto res = RestUtils::Base64Decode(data.c_str());
 	return CreateString(res.c_str());
+}
+CString* SvenEnhancerAs::InfoKeyValue(CString& info, CString& key)
+{
+	std::string infoStr(info.c_str());
+	std::string keyStr(key.c_str());
+	if (info.empty() || keyStr.empty())
+		return CreateString("");
+
+	auto res = INFOKEY_VALUE((char*)infoStr.c_str(), (char*)keyStr.c_str());
+	if(!res)
+		return CreateString("");
+	CString * ret = CreateString(res);
+	return ret;
 }
 CString* SvenEnhancerAs::HMAC_SHA256AS(CString& key, CString& data)
 {
@@ -277,6 +291,7 @@ int SvenEnhancerAs::TriggerClientCmd(edict_t* edict, const std::string& cmd)
 	auto snapshot = list;
 	CallbackItem item;
 	item.AddRef();
+	asIScriptContext* ctx = engine->RequestContext();
 
 	for (auto& entry : snapshot)
 	{
@@ -285,7 +300,6 @@ int SvenEnhancerAs::TriggerClientCmd(edict_t* edict, const std::string& cmd)
 
 		//item.StopCall = false;
 		//item.ReturnCode = 0;
-		asIScriptContext* ctx = engine->RequestContext();
 		if (!ctx)
 			continue;
 		ctx->Prepare(entry.callback);
@@ -293,10 +307,11 @@ int SvenEnhancerAs::TriggerClientCmd(edict_t* edict, const std::string& cmd)
 		ctx->SetArgAddress(1, &item);
 		int r = ctx->Execute();
 		lastr = ctx->GetReturnDWord();
-		engine->ReturnContext(ctx);
+		ctx->Unprepare();
 		if (item.StopCall)
 			break;
 	}
+	engine->ReturnContext(ctx);
 	return lastr;
 }
 
@@ -393,23 +408,24 @@ int SvenEnhancerAs::TriggerServerCmd(std::string& name)
 	auto snapshot = list;
 	CallbackItem item;
 	item.AddRef();
+	asIScriptContext* ctx = engine->RequestContext();
 	for (auto& entry : snapshot)
 	{
 		if (!entry.callback)
 			continue;
 		//item.StopCall = false;
 		//item.ReturnCode = 0;
-		asIScriptContext* ctx = engine->RequestContext();
 		if (!ctx)
 			continue;
 		ctx->Prepare(entry.callback);
 		ctx->SetArgAddress(0, &item);
 		int r = ctx->Execute();
 		lastr = ctx->GetReturnDWord();
-		engine->ReturnContext(ctx);
+		ctx->Unprepare();
 		if (item.StopCall)
 			break;
 	}
+	engine->ReturnContext(ctx);
 	return lastr;
 }
 
@@ -558,7 +574,7 @@ unsigned short SvenEnhancerEnt::GetPDataUShort(void* pThis, int offset, int linu
 void SvenEnhancerEnt::ClearPlayerData(int index)
 {
 	auto engine = GetASEngine();
-	auto dictInfo = engine->GetTypeInfoByDecl("dictionary");
+	static auto dictInfo = engine->GetTypeInfoByDecl("dictionary");
 	auto it = g_PlayerData.find(index);
 	if (it != g_PlayerData.end())
 	{
@@ -602,7 +618,7 @@ void* SvenEnhancerEnt::GetDataByEntity(void* entity)
 void SvenEnhancerEnt::ClearAllEntityData()
 {
 	auto engine = GetASEngine();
-	auto dictInfo = engine->GetTypeInfoByDecl("dictionary");
+	static auto dictInfo = engine->GetTypeInfoByDecl("dictionary");
 	for (auto& [k, v] : g_EntityData)
 	{
 		engine->ReleaseScriptObject(v, dictInfo);
@@ -624,6 +640,98 @@ bool SvenEnhancerEvent::On(CString& name, asIScriptFunction* callback)
 		});
 	return true;
 }
+
+bool SvenEnhancerEvent::OnGameEvent(CString& key, void* obj, int typeId)
+{
+	if (key.empty() || !obj)
+		return false;
+	
+	auto engine = GetASEngine();
+	auto typeInfo = engine->GetTypeInfoById(typeId);
+	if ((typeInfo->GetFlags() & asOBJ_FUNCDEF) == 0)
+	{
+		auto ctx = engine->RequestContext();
+		ctx->SetException("Provided object is not a function");
+		engine->ReturnContext(ctx);
+		return false;
+	}
+
+
+	asIScriptFunction* callback = nullptr;
+
+	if (typeId & asTYPEID_OBJHANDLE)
+	{
+		callback = *reinterpret_cast<asIScriptFunction**>(obj);
+	}
+	else
+	{
+		callback = reinterpret_cast<asIScriptFunction*>(obj);
+	}
+	if (!callback)
+		return false;
+	std::string _name(key.c_str());
+	auto parsed = ParseEvent(_name);
+	if (parsed.name.empty())
+		return false;
+
+	unsigned int type = 0;
+	unsigned int inner = 0;
+	std::string input = parsed.name;
+	size_t dotPos = input.find('.');
+	std::string prefix, suffix;
+	if (dotPos != std::string::npos) {
+		prefix = input.substr(0, dotPos);
+		suffix = input.substr(dotPos + 1);
+	}
+	else {
+		prefix = input;
+	}
+	std::string sig = "CallbackItem@ item";
+	try {
+
+		if (prefix == "message") {
+			type = EVENT_MESSAGE;
+			if (!suffix.empty()) {
+				inner = std::stoul(suffix);
+			}
+		}
+		else if (prefix == "getgamedescription")
+		{
+			type = EVENT_GETGAMEDESCRIPTION;
+		}
+		else if (prefix == "clientuserinfochanged")
+		{
+			sig = "CallbackItem@ item, edict_t@ edict, string&in oldInfo, string&in newInfo";
+			type = EVENT_CLIENTUSERINFOCHANGED;
+		}
+		else if (prefix == "keyvalue") {
+
+			sig = "CallbackItem@ item, edict_t@ edict, SEKeyValueData@ keyvalue";
+			type = EVENT_KEYVALUE;
+		}
+		else
+			return false;
+	}
+	catch (...) {
+		return false;
+	}
+	if (!AS_IsFunctionSignatureValid(callback, sig))
+	{
+		return false;
+	}
+	if(callback)
+		callback->AddRef();
+
+	unsigned long long lkey = MAKE_EVENTKEY(type, inner);
+	auto& vec = g_gameEvents[lkey];
+	vec.push_back(SvenEnhancerEventItem{
+			callback,
+			parsed.tag
+		});
+	return true;
+}
+
+
 bool SvenEnhancerEvent::Off(CString& name, asIScriptFunction* callback)
 {
 	if (name.empty())
@@ -651,7 +759,86 @@ bool SvenEnhancerEvent::Off(CString& name, asIScriptFunction* callback)
 	}
 	if (vec.empty())
 		g_events.erase(it);
+	return true;
+}
 
+bool SvenEnhancerEvent::OffGameEvent(CString& key, void* obj, int typeId)
+{
+	asIScriptFunction* callback = nullptr;
+	if (obj)
+	{
+		if (typeId & asTYPEID_OBJHANDLE)
+		{
+			callback = *reinterpret_cast<asIScriptFunction**>(obj);
+		}
+		else
+		{
+			auto engine = GetASEngine();
+			callback = reinterpret_cast<asIScriptFunction*>(obj);
+		}
+	}
+	std::string _name(key.c_str());
+	ParsedEvent parsed = ParseEvent(_name);
+
+	unsigned int type = 0;
+	unsigned int inner = 0;
+	std::string input = parsed.name;
+	size_t dotPos = input.find('.');
+	std::string prefix, suffix;
+	if (dotPos != std::string::npos) {
+		prefix = input.substr(0, dotPos);
+		suffix = input.substr(dotPos + 1);
+	}
+	else {
+		prefix = input;
+	}
+
+	try {
+
+		if (prefix == "message") {
+			type = EVENT_MESSAGE;
+			if (!suffix.empty()) {
+				inner = std::stoul(suffix);
+			}
+		}
+		else if (prefix == "getgamedescription")
+		{
+			type = EVENT_GETGAMEDESCRIPTION;
+		}
+		else if (prefix == "clientuserinfochanged")
+		{
+			type = EVENT_CLIENTUSERINFOCHANGED;
+		}
+		else if (prefix == "keyvalue") {
+			type = EVENT_KEYVALUE;
+		}
+		else
+			return false;
+	}
+	catch (...) {
+		return false;
+	}
+	unsigned long long lkey = MAKE_EVENTKEY(type, inner);
+	auto it = g_gameEvents.find(lkey);
+	if (it == g_gameEvents.end())
+		return false;
+	auto& vec = it->second;
+	auto curModule = GetActiveModule();
+	for (auto i = vec.begin(); i != vec.end(); )
+	{
+		bool matchFn = (callback == nullptr || i->callback == callback);
+		bool matchTag = (parsed.tag.empty() || i->tag == parsed.tag);
+		if (matchFn && matchTag && (!i->callback || i->callback->GetModule() == curModule))
+		{
+			i = vec.erase(i);
+		}
+		else
+		{
+			++i;
+		}
+	}
+	if (vec.empty())
+		g_gameEvents.erase(it);
 	return true;
 }
 
@@ -659,10 +846,13 @@ size_t SvenEnhancerEvent::Trigger(CString& name, CallbackItem* item, bool callAl
 {
 	if (name.empty())
 		return 0;
+	std::string _name(name.c_str());
+	auto it = g_events.find(_name);
+	if (it == g_events.end())
+		return 0;
 	if (item)
 	{
 		//item->AddRef();
-
 		CASServerManager* manager = ASEXT_GetServerManager();
 		auto module = GetModulePtr(manager);
 		if (module)
@@ -670,14 +860,13 @@ size_t SvenEnhancerEvent::Trigger(CString& name, CallbackItem* item, bool callAl
 			item->moduleName = module->GetName();
 		}
 	}
-	std::string _name(name.c_str());
-	auto it = g_events.find(_name);
-	if (it == g_events.end())
-		return 0;
 	auto& vec = it->second;
 	auto copy = vec;
 	auto engine = GetASEngine();
 	size_t total = 0;
+	asIScriptContext* ctx = engine->RequestContext();
+	if (!ctx)
+		return 0;
 	for (auto& entry : copy)
 	{
 		if (!entry.callback)
@@ -685,18 +874,68 @@ size_t SvenEnhancerEvent::Trigger(CString& name, CallbackItem* item, bool callAl
 
 		//item.StopCall = false;
 		//item.ReturnCode = 0;
-		asIScriptContext* ctx = engine->RequestContext();
-		if (!ctx)
-			continue;
+
 		ctx->Prepare(entry.callback);
 		ctx->SetArgAddress(0, &name);
 		ctx->SetArgObject(1, item);
 		int r = ctx->Execute();
-		engine->ReturnContext(ctx);
+		ctx->Unprepare();
 		total++;
 		if (item && item->StopCall && !callAll)
 			break;
 	}
+	engine->ReturnContext(ctx);
+	return total;
+}
+
+size_t SvenEnhancerEvent::TriggerGameEvent(uint64_t key,  CallbackItem* item, const std::vector<DynamicArg>& args, bool callAll)
+{
+	auto it = g_gameEvents.find(key);
+	if (it == g_gameEvents.end())
+		return 0;
+	if (item)
+	{
+		//item->AddRef();
+		CASServerManager* manager = ASEXT_GetServerManager();
+		auto module = GetModulePtr(manager);
+		if (module)
+		{
+			item->moduleName = module->GetName();
+		}
+	}
+	auto& vec = it->second;
+	auto copy = vec;
+	auto engine = GetASEngine();
+	size_t total = 0;
+	asIScriptContext* ctx = engine->RequestContext();
+	if (!ctx)
+		return 0;
+	for (auto& entry : copy)
+	{
+		if (!entry.callback)
+			continue;
+		ctx->Prepare(entry.callback);
+		ctx->SetArgObject(0, item);
+		int argc = entry.callback->GetParamCount();
+		
+		if(args.size() > 0 && argc == args.size() + 1)
+		{
+			for (size_t i = 0; i < args.size(); ++i)
+			{
+				int typeId;
+				asDWORD flags;
+				const char* name;
+				entry.callback->GetParam(i + 1, &typeId, &flags, &name);
+				AS_SetDynamicArg(ctx, 1 + i, typeId, args[i]);
+			}
+		}
+		int r = ctx->Execute();
+		ctx->Unprepare();
+		total++;
+		if (item && item->StopCall && !callAll)
+			break;
+	}
+	engine->ReturnContext(ctx);
 	return total;
 }
 
@@ -721,6 +960,27 @@ void SvenEnhancerEvent::ClearEventByModule(asIScriptModule* module)
 		}
 		if (vec.empty())
 			it = g_events.erase(it);
+		else
+			++it;
+	}
+
+	for (auto it = g_gameEvents.begin(); it != g_gameEvents.end(); )
+	{
+		auto& vec = it->second;
+		for (auto i = vec.begin(); i != vec.end(); )
+		{
+			if (i->callback && i->callback->GetModule() == module)
+			{
+				i->callback->Release();
+				i->callback = nullptr;
+				i = vec.erase(i);
+				removedAny = true;
+			}
+			else
+				++i;
+		}
+		if (vec.empty())
+			it = g_gameEvents.erase(it);
 		else
 			++it;
 	}
@@ -756,8 +1016,9 @@ CScriptArray* SvenEnhancerFile::GetFiles(CString& path, bool includeDirectory, C
 				ctx->SetArgAddress(0, str);
 			}
 			ctx->Execute();
-		}	
-	};
+			ctx->Unprepare();
+		}
+		};
 	if (method)
 	{
 		try {
@@ -777,8 +1038,37 @@ CScriptArray* SvenEnhancerFile::GetFiles(CString& path, bool includeDirectory, C
 		}
 		catch (const fs::filesystem_error& err) {
 		}
-
 	}
 	eng->ReturnContext(ctx);
 	return (CScriptArray*)arr;
+}
+TValue* SvenEnhancerAs::Toml_ParseFromFile(CString& input)
+{
+	try
+	{
+		std::string path = input.c_str();
+		auto fp = AsGetPath(path);
+		toml::table tbl = toml::parse_file(fp);
+		auto v = new TValue(new toml::table(tbl));
+		return v;
+	}
+	catch (...)
+	{
+	}
+	return nullptr;
+}
+TValue* SvenEnhancerAs::Toml_Parse(CString& input)
+{
+	try
+	{
+		std::string data = input.c_str();
+		toml::table tbl = toml::parse(data);
+		auto v = new TValue(new toml::table(tbl));
+
+		return v;
+	}
+	catch (...)
+	{
+	}
+	return nullptr;
 }

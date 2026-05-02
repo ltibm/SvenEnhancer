@@ -262,6 +262,7 @@ void RegisterCallbackMethods(CASDocumentation* pASDoc, asIScriptEngine* engine)
 		asCALL_THISCALL
 	);
 
+
 	engine->RegisterObjectMethod(
 		"SvenEnhancerEvent",
 		"bool Off(string&in name, EventCallback@ item = null)",
@@ -273,6 +274,20 @@ void RegisterCallbackMethods(CASDocumentation* pASDoc, asIScriptEngine* engine)
 		"SvenEnhancerEvent",
 		"uint Trigger(string&in name, CallbackItem@ item = null, bool callAll = false)",
 		asMETHOD(SvenEnhancerEvent, Trigger),
+		asCALL_THISCALL
+	);
+
+	engine->RegisterObjectMethod(
+		"SvenEnhancerEvent",
+		"bool OnGame(string&in name, ?&in callback)",
+		asMETHOD(SvenEnhancerEvent, OnGameEvent),
+		asCALL_THISCALL
+	);
+
+	engine->RegisterObjectMethod(
+		"SvenEnhancerEvent",
+		"bool OffGame(string&in name, ?&in callback)",
+		asMETHOD(SvenEnhancerEvent, OffGameEvent),
 		asCALL_THISCALL
 	);
 }

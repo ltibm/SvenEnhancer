@@ -535,7 +535,8 @@ bool JValue::DeserializeB(void* obj, asITypeInfo* type) {
 		{
 			auto method = type->GetMethodByName("insertLast");
 			CScriptArray* s = reinterpret_cast<CScriptArray*>(obj);
-	
+			auto ctx = eng->RequestContext();
+
 			if (s && method)
 			{
 				int elementTypeId = s->m_ElementTypeId;
@@ -546,7 +547,6 @@ bool JValue::DeserializeB(void* obj, asITypeInfo* type) {
 					auto ptr = getJValue(elementTypeId, jcur, eng, curDepth);
 					if (ptr)
 					{
-						auto ctx = eng->RequestContext();
 						ctx->Prepare(method);
 						ctx->SetObject(s);
 						if (elementTypeId == asTYPEID_INT32)
@@ -568,11 +568,13 @@ bool JValue::DeserializeB(void* obj, asITypeInfo* type) {
 						{
 
 						}
-						eng->ReturnContext(ctx);
+						ctx->Unprepare();
 						//ctx->Release();
 					}
 				}
 			}
+			eng->ReturnContext(ctx);
+
 			return true;
 		}
 		return false;
@@ -998,15 +1000,16 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 			size_t size = ctxsz->GetReturnDWord();
 			eng->ReturnContext(ctxsz);
 			//ctxsz->Release();
+			auto ctx = eng->RequestContext();
+
 			for (size_t i = 0; i < size; i++)
 			{
-				auto ctx = eng->RequestContext();
 				ctx->Prepare(methodOp);
 				ctx->SetObject(s);
 				ctx->SetArgDWord(0, i);
 				if (ctx->Execute() != asEXECUTION_FINISHED)
 				{
-					eng->ReturnContext(ctx);
+					ctx->Unprepare();
 					continue;
 				}
 				void* obj = ctx->GetReturnAddress();
@@ -1014,8 +1017,10 @@ nlohmann::json JValue::FillFromObjectPrv(void* obj, asITypeInfo* type, int other
 
 				void* newObj = *reinterpret_cast<void**>(static_cast<uint8_t*>(obj));
 				jarray.push_back(this->FillFromObjectPrv(isPrimviteType(elementTypeId) || isSpecialType(elementTypeId) ? obj : newObj, arrT, arrT == nullptr ? elementTypeId : 0, depth++));
-				eng->ReturnContext(ctx);
+				ctx->Unprepare();
 			}
+			eng->ReturnContext(ctx);
+
 			return jarray;
 		}
 		return nullptr;
@@ -1319,9 +1324,7 @@ void JValue::SaveToFileI(CString& path, int indent)
 	std::string filePath = path.c_str();
 	if (filePath.ends_with(".as"))
 		return;
-	std::filesystem::path _path(filePath);
-	std::filesystem::path rootPath = "./svencoop";
-	std::filesystem::path full = std::filesystem::weakly_canonical(rootPath / _path);
+	std::filesystem::path full = AsGetPath(filePath);
 	try
 	{
 		std::ofstream out(full);
@@ -1549,24 +1552,25 @@ void JValue::Clear()
 void* JValue::GetKeys()
 {
 	auto eng = GetASEngine();
-	asITypeInfo* arrInfo = eng->GetTypeInfoByDecl("array<string>");
+	static asITypeInfo* arrInfo = eng->GetTypeInfoByDecl("array<string>");
 	int typeId = arrInfo->GetTypeId();
 	auto arr = eng->CreateScriptObject(arrInfo);
 	eng->NotifyGarbageCollectorOfNewObject(arr, arrInfo);
 	if(!json.is_object())
 		return arr;
+	auto ctx = eng->RequestContext();
 	auto method = arrInfo->GetMethodByName("insertLast");
 	for (auto& [key, value] : json.items()) {
 		CString* s = new CString();
 		s->assign(key.c_str(), key.length());
-		auto ctx = eng->RequestContext();
 		ctx->Prepare(method);
 		ctx->SetObject(arr);
 		ctx->SetArgObject(0, s);
 		ctx->Execute();
-		eng->ReturnContext(ctx);
+		ctx->Unprepare();
 		s->dtor();
 	}
+	eng->ReturnContext(ctx);
 	auto it = json.begin();
 	return arr;
 }

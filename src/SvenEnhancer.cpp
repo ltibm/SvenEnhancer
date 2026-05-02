@@ -24,7 +24,12 @@ static META_FUNCTIONS gMetaFunctionTable = {
 	NULL,			// pfnGetStudioBlendingInterface_Post 2022/07/02 Added by hzqst
 };
 
-
+static void SE_COMMAND()
+{
+	char msg[100];
+	sprintf(msg, "Sven Enhancer: v%.2f\nDate: %s\n", SE_VERSION_FLOAT, SE_DATE);
+	SERVER_PRINT(msg);
+}
 
 // Plugin info
 plugin_info_t Plugin_info = {
@@ -132,6 +137,8 @@ extern "C" {
 		sprintf(msg, "\nSven Enhancer: v%.2f\n", SE_VERSION_FLOAT);
 		SERVER_PRINT(msg);
 		RegisterSVCvar("svenenhancer_version", SE_VERSION_FLOAT);
+		REG_SVR_COMMAND((char*)"svenenhancer", SE_COMMAND);
+
 		return TRUE;
 	}
 

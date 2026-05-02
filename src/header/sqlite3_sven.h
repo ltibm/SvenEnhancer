@@ -298,7 +298,11 @@ class SqliteConnection : public CASBaseGCObject {
 public:
 	static void CallbackFrame()
 	{
+
+		if(g_SqliteResultQueues.empty())
+			return;
 		auto engine = GetASEngine();
+		auto ctx = engine->RequestContext();
 		while (!g_SqliteResultQueues.empty())
 		{
 			SqliteResultItem responseData;
@@ -318,26 +322,26 @@ public:
 						result.value = responseData.paramvalue;
 						result.exists = responseData.paramExists;
 						result.count = responseData.paramcount;
-						auto ctx = engine->RequestContext();
 						ctx->Prepare(responseData.callback);
 						ctx->SetArgObject(0, &result);
 						ctx->SetArgObject(1, responseData.userData);
 						ctx->Execute();
-						engine->ReturnContext(ctx);
+						ctx->Unprepare();
 					}
 				}
 				else {
-					auto ctx = engine->RequestContext();
 					ctx->Prepare(responseData.callback);
 					auto results = SqliteConnection::GetArrayFromResult(responseData);
 					ctx->SetArgObject(0, results);
 					ctx->SetArgObject(1, responseData.userData);
 					ctx->Execute();
-					engine->ReturnContext(ctx);
+					ctx->Unprepare();
 				}
 
 			}
 		}
+		engine->ReturnContext(ctx);
+
 	}
 	static bool IsConnectionValid(sqlite3* db)
 	{
@@ -493,6 +497,7 @@ public:
 			ctx->SetObject(arr);
 			ctx->SetArgObject(0, &_row);
 			ctx->Execute();
+			ctx->Unprepare();
 		}
 		eng->ReturnContext(ctx);
 		return (CScriptArray*)arr;
@@ -515,16 +520,18 @@ public:
 		if (Sqlite3Fn._sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
 			if (parameters)
 				FillParametersFromDictionary(stmt, parameters);
+			auto ctx = eng->RequestContext();
+
 			while (Sqlite3Fn._sqlite3_step(stmt) == SQLITE_ROW) {
 				SqliteRow* row = SqliteRow::Factory();
 				row->ReadAllColumns(stmt);
-				auto ctx = eng->RequestContext();
 				ctx->Prepare(method);
 				ctx->SetObject(arr);
 				ctx->SetArgAddress(0, &row);
 				ctx->Execute();
-				eng->ReturnContext(ctx);
+				ctx->Unprepare();
 			}
+			eng->ReturnContext(ctx);
 			Sqlite3Fn._sqlite3_finalize(stmt);
 		}
 		return (CScriptArray*)arr;

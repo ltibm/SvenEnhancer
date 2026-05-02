@@ -3,7 +3,7 @@
 #pragma region Dictionary
 int CScriptDictValue::GetTypeId()
 {
-	return this->m_typeId;
+	return m_typeId;
 }
 const void* CScriptDictValue::GetAddressOfValue() const
 {
@@ -16,21 +16,21 @@ const void* CScriptDictValue::GetAddressOfValue() const
 
 CDictHelper::CDictHelper(void* base)
 {
-	this->basePtr = base;
-	this->engine = GetASEngine();
-	this->stringTypeId = engine->GetTypeIdByDecl("string");
-	this->dictType = engine->GetTypeInfoByDecl("dictionary");
-	this->fnOpIndex = this->dictType->GetMethodByDecl("dictionaryValue &opIndex(const string &in)");
-	this->fnGetKeys = this->dictType->GetMethodByName("getKeys");
-	this->fnExists = this->dictType->GetMethodByName("exists");
-	this->fnSet = this->dictType->GetMethodByDecl("void set(const string&in, const ?&in)");
+	basePtr = base;
+	engine = GetASEngine();
+	stringTypeId = engine->GetTypeIdByDecl("string");
+	dictType = engine->GetTypeInfoByDecl("dictionary");
+	fnOpIndex = dictType->GetMethodByDecl("dictionaryValue &opIndex(const string &in)");
+	fnGetKeys = dictType->GetMethodByName("getKeys");
+	fnExists = dictType->GetMethodByName("exists");
+	fnSet = dictType->GetMethodByDecl("void set(const string&in, const ?&in)");
 }
 CScriptArray* CDictHelper::getKeys()
 {
-	if (!this->basePtr)
+	if (!basePtr)
 		return nullptr;
-	auto ctx = initContext(this->fnGetKeys);
-	auto tid = this->fnGetKeys->GetReturnTypeId();;
+	auto ctx = initContext(fnGetKeys);
+	auto tid = fnGetKeys->GetReturnTypeId();;
 	if (ctx->Execute() == asEXECUTION_FINISHED)
 	{
 		auto type = engine->GetTypeInfoById(tid);
@@ -69,9 +69,9 @@ CScriptDictValue* CDictHelper::getByName(std::string name)
 
 CScriptDictValue* CDictHelper::getByName(CString& name)
 {
-	if (!this->basePtr)
+	if (!basePtr)
 		return nullptr;
-	auto ctx = this->initContext(this->fnOpIndex);
+	auto ctx = initContext(fnOpIndex);
 	ctx->SetArgObject(0, &name);
 	if (ctx->Execute() == asEXECUTION_FINISHED)
 	{
@@ -85,7 +85,7 @@ CString& CDictHelper::getString(CString& name)
 {
 	// TODO: insert return statement here
 	auto v = getByName(name);
-	if (v && v->GetTypeId() == this->stringTypeId)
+	if (v && v->GetTypeId() == stringTypeId)
 	{
 
 		return *(CString*)v->GetAddressOfValue();
@@ -130,7 +130,7 @@ std::string CDictHelper::getStdString(CString& name, std::string fmt)
 		}
 		auto typeId = v->GetTypeId();
 		char buffer[100];
-		if (typeId == this->stringTypeId)
+		if (typeId == stringTypeId)
 		{
 			CString c = *(CString*)v->GetAddressOfValue();
 			return c.c_str();

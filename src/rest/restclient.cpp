@@ -239,6 +239,10 @@ void RestClient::ProcessAsync() {
 
 void RestClient::Dispatch() {
 
+    if(m_Completed.empty())
+        return;
+    auto engine = GetASEngine();
+    asIScriptContext* ctx = engine->RequestContext();
     while (!m_Completed.empty()) {
         InternalRequest* job = nullptr;
         {
@@ -249,10 +253,8 @@ void RestClient::Dispatch() {
         }
         if (job && job->Callback) {
 
-            auto engine = GetASEngine();
             if (engine) {
 
-                asIScriptContext* ctx = engine->CreateContext();
                 ctx->Prepare(job->Callback);
 
                 auto context = RestContext::Factory();
@@ -262,6 +264,7 @@ void RestClient::Dispatch() {
                 ctx->SetArgObject(0, context);
                 ctx->Execute();
                 ctx->Release();
+                ctx->Unprepare();
                 job->Callback->Release();
 
             }
@@ -270,6 +273,7 @@ void RestClient::Dispatch() {
             delete job;
         }
     }
+    engine->ReturnContext(ctx);
 }
 void RestClient::ProcessAll()
 {

@@ -1,5 +1,12 @@
 #pragma once
 #include <callbackitem.h>
+#include <tvalue.h>
+#define MAKE_EVENTKEY(type, inner) (((unsigned long long)(type) << 32) | (unsigned int)(inner)) 
+#define EVENT_MESSAGE 1
+#define EVENT_GETGAMEDESCRIPTION 2
+#define EVENT_CLIENTUSERINFOCHANGED 3
+#define EVENT_KEYVALUE 4
+
 class JValue;
 class MySqlConnection;
 class MySqlConnectionConfig;
@@ -17,6 +24,7 @@ struct ServerCmdEntry {
 	int order;
 };
 
+
 extern std::unordered_map<std::string, std::vector<ClientCmdEntry>> m_ClientCmds;
 extern std::unordered_map<std::string, std::vector<ServerCmdEntry>> m_ServerCmds;
 
@@ -27,6 +35,8 @@ public:
 	~SvenEnhancerAs();
 	JValue* Json_ParseFromFile(CString& input);
 	JValue* Json_Parse(CString& input);
+	TValue* Toml_ParseFromFile(CString& input);
+	TValue* Toml_Parse(CString& input);
 	JValue* Json_ParseObject(void* obj, asITypeInfo* typeId);
 	JValue* Json_ParseObjectV2(void* obj, int typeId);
 	bool MySql_Loaded();
@@ -37,6 +47,7 @@ public:
 	CString* MD5AS(CString& data);
 	CString* BASE64Encode(CString& data);
 	CString* BASE64Decode(CString& data);
+	CString* InfoKeyValue(CString& info, CString& key);
 
 	RefObject* pDictionary = nullptr;
 	MySqlConnection* MySqlConnection_Create(MySqlConnectionConfig& config);
@@ -67,6 +78,7 @@ struct SvenEnhancerEventItem
 {
 	asIScriptFunction* callback;
 	std::string tag;
+	//asIScriptModule* module;
 };
 struct ParsedEvent
 {
@@ -95,19 +107,23 @@ public:
 	CScriptArray* GetFiles(CString& path, bool includeDirectory, CString& filter, bool recursive = false);
 
 };
-
+struct DynamicArg;
 class SvenEnhancerEvent {
 
 public:
 	std::unordered_map<std::string, std::vector<SvenEnhancerEventItem>> g_events;
+	std::unordered_map<unsigned long long, std::vector<SvenEnhancerEventItem>> g_gameEvents;
 	bool On(CString& name, asIScriptFunction* callback);
+	bool OnGameEvent(CString& key, void* obj, int typeId);
 	bool Off(CString& name, asIScriptFunction* callback);
+	bool OffGameEvent(CString& key, void* obj, int typeId);
 	size_t Trigger(CString& name, CallbackItem* item, bool callAll);
+	size_t TriggerGameEvent(uint64_t key, CallbackItem* item, const std::vector<DynamicArg>& args = {}, bool callAll = false);
 	void ClearEventByModule(asIScriptModule* module);
 	inline ParsedEvent ParseEvent(const std::string& full)
 	{
 		ParsedEvent e;
-		size_t pos = full.find('#');
+		size_t pos = full.rfind('#');
 		if (pos == std::string::npos)
 		{
 			e.name = full;

@@ -6,15 +6,17 @@
 #include <ctime>
 #include <unordered_map>
 #include <unordered_set>
+#include <bitset>
 #include <algorithm>
 #ifdef _MSC_VER
 #include <cstdio>
 namespace std {
-    using ::_snprintf; // global _snprintf’ı std:: içine al
+    using ::_snprintf;
 }
 #endif
 
 #include "json.hpp"
+#include <toml.hpp>
 
 #include <extdll.h>	
 #include <meta_api.h>
@@ -34,6 +36,7 @@ namespace std {
 #include "extern_hook.h"
 #include "angelscript_helper.h"
 #include <jvalue.h>
+#include <tvalue.h>
 #include <moduledata.h>
 #include <callbackmethod.h>
 #include <curlfn.h>

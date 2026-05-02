@@ -36,6 +36,7 @@
 #include <angelscript_expansion.h>
 #include <rest.h>
 #include <sqlite3_sven.h>
+#include <gameevents.h>
 
 #define CALL_ANGELSCRIPT(pfn, ...) if (ASEXT_CallHook){(*ASEXT_CallHook)(g_AngelHook.pfn, 0, __VA_ARGS__);}
 
@@ -82,6 +83,7 @@ void SV_StartFrame(void) {
 
 void ClientDisconnect(edict_t* pEntity) {
 	Angelscript_ClientDisconnect(pEntity);
+	Hook_ClientDisconnect(pEntity);
 	SET_META_RESULT(MRES_IGNORED);
 }
 static DLL_FUNCTIONS gFunctionTable = {
@@ -91,7 +93,7 @@ static DLL_FUNCTIONS gFunctionTable = {
 	NULL,					// pfnUse
 	NULL,				// pfnTouch
 	NULL,				// pfnBlocked
-	NULL,					// pfnKeyValue
+	Hook_KeyValue,					// pfnKeyValue
 	NULL,					// pfnSave
 	NULL,					// pfnRestore
 	NULL,					// pfnSetAbsBox
@@ -108,7 +110,7 @@ static DLL_FUNCTIONS gFunctionTable = {
 	NULL,					// pfnClientKill
 	NULL,					// pfnClientPutInServer
 	ClientCommand,					// pfnClientCommand
-	ClientUserInfoChanged,					// pfnClientUserInfoChanged
+	Hook_ClientUserInfoChanged,					// pfnClientUserInfoChanged
 	ServerActivate,					// pfnServerActivate
 	ServerDeactivate,					// pfnServerDeactivate
 
@@ -119,7 +121,7 @@ static DLL_FUNCTIONS gFunctionTable = {
 	NULL,					// pfnParmsNewLevel
 	NULL,					// pfnParmsChangeLevel
 
-	NULL,					// pfnGetGameDescription
+	Hook_GetGameDescription,	// pfnGetGameDescription
 	NULL,					// pfnPlayerCustomization
 
 	NULL,					// pfnSpectatorConnect
@@ -159,7 +161,6 @@ C_DLLEXPORT int GetEntityAPI2(DLL_FUNCTIONS* pFunctionTable,
 		return(FALSE);
 	}
 	memcpy(pFunctionTable, &gFunctionTable, sizeof(DLL_FUNCTIONS));
-
 
 	return TRUE;
 }
@@ -211,7 +212,7 @@ static DLL_FUNCTIONS gFunctionTable_Post = {
 	NULL,					// pfnParmsNewLevel
 	NULL,					// pfnParmsChangeLevel
 
-	NULL,					// pfnGetGameDescription
+	NULL,	// pfnGetGameDescription
 	NULL,					// pfnPlayerCustomization
 
 	NULL,					// pfnSpectatorConnect

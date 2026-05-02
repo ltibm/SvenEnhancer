@@ -263,7 +263,7 @@ void RestClient::Dispatch() {
 				context->UserData = job->UserData;
                 ctx->SetArgObject(0, context);
                 ctx->Execute();
-                ctx->Release();
+                //ctx->Release();
                 ctx->Unprepare();
                 job->Callback->Release();
 

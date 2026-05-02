@@ -93,6 +93,25 @@ static asINT64 Dict_GetLong(void* dict, CString& key)
 	}
 	return 0;
 }
+static bool Dict_GetBool(void* dict, CString& key)
+{
+	CDictHelper helper(dict);
+	CScriptDictValue* v = helper.getByName(key);
+	if (!v)
+		return 0;
+	int typeId = v->GetTypeId();
+	if (isNumericType(typeId))
+	{
+		if (IsFloatingType(typeId))
+		{
+			bool val = v->m_valueFlt != 0;
+			return (asINT32)val;
+		}
+		else
+			return v->m_valueInt != 0;
+	}
+	return false;
+}
 static asINT32 Dict_GetInt(void* dict, CString& key)
 {
 	CDictHelper helper(dict);
@@ -573,6 +592,9 @@ void AngelScript_Expand() {
 			"dictionary","string& GetString(string&in key) const",asFUNCTION(Dict_GetString),asCALL_CDECL_OBJFIRST
 		);
 		engine->RegisterObjectMethod(
+			"dictionary", "bool GetBool(string&in key) const", asFUNCTION(Dict_GetBool), asCALL_CDECL_OBJFIRST
+		);
+		engine->RegisterObjectMethod(
 			"dictionary", "int GetInt(string&in key) const", asFUNCTION(Dict_GetInt), asCALL_CDECL_OBJFIRST
 		);
 		engine->RegisterObjectMethod(
@@ -582,7 +604,7 @@ void AngelScript_Expand() {
 			"dictionary", "float GetFloat(string&in key) const", asFUNCTION(Dict_GetFloat), asCALL_CDECL_OBJFIRST
 		);
 		engine->RegisterObjectMethod(
-			"dictionary", "float GetDouble(string&in key) const", asFUNCTION(Dict_GetDouble), asCALL_CDECL_OBJFIRST
+			"dictionary", "double GetDouble(string&in key) const", asFUNCTION(Dict_GetDouble), asCALL_CDECL_OBJFIRST
 		);
 		engine->RegisterObjectMethod(
 			"dictionary", "dictionary@ GetDict(string&in key) const", asFUNCTION(Dict_GetDict), asCALL_CDECL_OBJFIRST

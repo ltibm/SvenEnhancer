@@ -556,7 +556,7 @@ public:
 				{
 					Sqlite3Fn._sqlite3_bind_int64(stmt, pindex, item.data.iVal);
 				}
-				else if (isNumericType(typeId) || typeId == asTYPEID_BOOL)
+				else if (isNumericType(typeId))
 				{
 					Sqlite3Fn._sqlite3_bind_int(stmt, pindex, item.data.iVal);
 				}
@@ -597,7 +597,7 @@ public:
 						{
 							Sqlite3Fn._sqlite3_bind_int64(stmt, pindex, dictValue->m_valueInt);
 						}
-						else if (isNumericType(typeId) || typeId == asTYPEID_BOOL)
+						else if (isNumericType(typeId))
 						{
 							Sqlite3Fn._sqlite3_bind_int(stmt, pindex, dictValue->m_valueInt);
 						}
@@ -644,7 +644,7 @@ public:
 					{
 						cell.data.iVal = dictValue->m_valueInt;
 					}
-					else if (isNumericType(typeId) || typeId == asTYPEID_BOOL)
+					else if (isNumericType(typeId))
 					{
 						cell.data.iVal = dictValue->m_valueInt;
 					}

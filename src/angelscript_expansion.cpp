@@ -98,14 +98,14 @@ static bool Dict_GetBool(void* dict, CString& key)
 	CDictHelper helper(dict);
 	CScriptDictValue* v = helper.getByName(key);
 	if (!v)
-		return 0;
+		return false;
 	int typeId = v->GetTypeId();
 	if (isNumericType(typeId))
 	{
 		if (IsFloatingType(typeId))
 		{
 			bool val = v->m_valueFlt != 0;
-			return (asINT32)val;
+			return val;
 		}
 		else
 			return v->m_valueInt != 0;

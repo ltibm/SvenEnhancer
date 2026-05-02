@@ -246,7 +246,7 @@ inline bool isSpecialType(int typeId)
 }
 inline bool isNumericType(int typeId)
 {
-	return typeId >= asTYPEID_INT8 && typeId <= asTYPEID_DOUBLE;
+	return typeId >= asTYPEID_BOOL && typeId <= asTYPEID_DOUBLE;
 }
 inline std::string AsGetPath(std::string filePath)
 {

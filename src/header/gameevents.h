@@ -12,6 +12,8 @@ inline const char* Hook_GetGameDescription()
 		SET_META_RESULT(MRES_SUPERCEDE);
 		return ret.c_str();
 	}
+	//fix
+	SET_META_RESULT(MRES_IGNORED);
 	return {};
 }
 inline void Hook_KeyValue(edict_t* pentKeyvalue, KeyValueData* pkvd)

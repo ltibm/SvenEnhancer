@@ -1,0 +1,22 @@
+#Param Orders: Tag, Nick, Message
+#e.g output [Admin] PlayerName: This is my message
+chatformat = "[%s] %s: %s"
+
+#Disabled tags for this map
+tags_disabled_maps = ["map_to_disable"]
+#Disabled colors for this map
+color_disabled_maps = ["ctf_warforts", "bm_sts"]
+
+#user1
+[[usertags]]
+steamid = "STEAM_1234567"
+tag = "Admin"
+color = "Red" #Supported colors: Red Blue Green Yellow
+nochatformat = false  #default false
+disabled = false #default false
+
+#user2
+[[usertags]]
+steamid = "STEAM_12345678"
+tag = "Vip"
+color = "Blue"

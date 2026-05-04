@@ -1,6 +1,9 @@
 # Sven Enhancer
 Sven Enhancer is a Metamod plugin for SvenCoop, this plugin is tested on Windows 11 and Ubuntu(With WSL).
 
+# Voice Management
+[SEE](https://github.com/ltibm/SvenEnhancer/blob/master/Voice.md)
+
 # OnGameEvents And TOML Support
 [SEE](https://github.com/ltibm/SvenEnhancer/blob/master/OnGameEventsAndTOML.md)
 

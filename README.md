@@ -1,5 +1,9 @@
 # Sven Enhancer
 Sven Enhancer is a Metamod plugin for SvenCoop, this plugin is tested on Windows 11 and Ubuntu(With WSL).
+supported console/server commands
+**svenenhancer** - for informations
+**svenenhancer flushadmins** - for reloading admins from admins.txt
+
 
 # Voice Management
 [SEE](https://github.com/ltibm/SvenEnhancer/blob/master/Voice.md)

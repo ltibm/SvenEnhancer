@@ -1,5 +1,22 @@
 #include <svenenhancer.h>
 
+std::stack<CASModule*> g_ModuleStack;
+
+void CASCurrentModulePush(CASModule* pNewModule) {
+	auto manager = ASEXT_GetServerManager();
+	if (manager == nullptr) return;
+	g_ModuleStack.push(manager->curModule);
+	manager->curModule = pNewModule;
+}
+
+void CASCurrentModulePop() {
+	auto manager = ASEXT_GetServerManager();
+	if (manager == nullptr || g_ModuleStack.empty()) return;
+	CASModule* pOldModule = g_ModuleStack.top();
+	g_ModuleStack.pop();
+	manager->curModule = pOldModule;
+}
+
 asIScriptModule* GetActiveModule()
 {
 	CASServerManager* manager = ASEXT_GetServerManager();

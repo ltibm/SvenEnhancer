@@ -103,7 +103,7 @@ struct InternalRequest
     RestRequest* Request;
     RestResponse* Response;
     curl_slist* HeaderList = nullptr;
-    asIScriptFunction* Callback = nullptr;
+    SEFunction* Callback = nullptr;
     std::string ResponseBuffer;
     StringCollection Headers;
     void* UserData = nullptr;

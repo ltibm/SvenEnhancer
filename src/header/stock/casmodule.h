@@ -1,4 +1,5 @@
 #pragma once
+#include <stack>
 class asIScriptModule;
 class CASServerManager;
 class SECASModule  {
@@ -18,3 +19,8 @@ private:
 
 asIScriptModule* GetModulePtr(CASServerManager*);
 asIScriptModule* GetActiveModule();
+class CASModule;
+extern std::stack<CASModule*> g_ModuleStack;
+void CASCurrentModulePush(CASModule* pNewModule);
+
+void CASCurrentModulePop();

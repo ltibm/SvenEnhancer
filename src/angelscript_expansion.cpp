@@ -146,7 +146,7 @@ static float Dict_GetFloat(void* dict, CString& key)
 			return (float)val;
 		}
 		else
-			return (float) v->m_valueInt;
+			return (float)v->m_valueInt;
 	}
 	return 0;
 }
@@ -247,8 +247,8 @@ static void* Dict_GetString(void* dict, CString& key)
 	return CreateString(out.c_str());
 }
 
-void AngelScript_Expand() {
-
+void AngelScript_Expand()
+{
 	ASEXT_RegisterScriptBuilderDefineCallback([](CScriptBuilder* pScriptBuilder) {
 		ASEXT_CScriptBuilder_DefineWord(pScriptBuilder, "SE");
 		ASEXT_CScriptBuilder_DefineWord(pScriptBuilder, "SE_MYSQL");
@@ -258,7 +258,7 @@ void AngelScript_Expand() {
 	ASEXT_RegisterDirInitCallback([](CASDirectoryList* pASDirList) {
 		//ASEXT_CreateDirectory(pASDirList, "test/path", ASFlag_Plugin, ASFileAccessControl_Read | ASFileAccessControl_Write, true, 0);
 
-	});
+		});
 
 	ASEXT_RegisterDocInitCallback([](CASDocumentation* pASDoc) {
 		g_SE = new SvenEnhancerAs();
@@ -542,7 +542,7 @@ void AngelScript_Expand() {
 			asCALL_CDECL_OBJFIRST
 		);
 
-		for (int i = 0; i <= 11; i++)
+		for (int i = 0; i <= 13; i++)
 		{
 			std::string sig = "string Sprintf(const string &in format";
 			for (int x = 0; x < i; x++)
@@ -555,7 +555,7 @@ void AngelScript_Expand() {
 				asCALL_GENERIC
 			);
 		}
-		for (int i = 0; i <= 11; i++)
+		for (int i = 0; i <= 13; i++)
 		{
 			std::string sig = "void Printf(const string &in format";
 			for (int x = 0; x < i; x++)
@@ -568,7 +568,7 @@ void AngelScript_Expand() {
 				asCALL_GENERIC
 			);
 		}
-		for (int i = 0; i <= 11; i++)
+		for (int i = 0; i <= 13; i++)
 		{
 			std::string sig = "void Commandf(const string &in format";
 			for (int x = 0; x < i; x++)
@@ -581,6 +581,31 @@ void AngelScript_Expand() {
 				asCALL_GENERIC
 			);
 		}
+		engine->RegisterObjectMethod(
+			"SvenEnhancer",
+			"void QueryClientCvarValue(int index, string&in queryName)",
+			asMETHOD(SvenEnhancerAs, QueryClientCvarValueI),
+			asCALL_THISCALL
+		);
+		engine->RegisterObjectMethod(
+			"SvenEnhancer",
+			"void QueryClientCvarValue(edict_t@ edict, string&in queryName)",
+			asMETHOD(SvenEnhancerAs, QueryClientCvarValue),
+			asCALL_THISCALL
+		);
+		engine->RegisterObjectMethod(
+			"SvenEnhancer",
+			"void QueryClientCvarValue2(int index, string&in queryName, int requestId)",
+			asMETHOD(SvenEnhancerAs, QueryClientCvarValue2I),
+			asCALL_THISCALL
+		);
+
+		engine->RegisterObjectMethod(
+			"SvenEnhancer",
+			"void QueryClientCvarValue2(edict_t@ edict, string&in queryName, int requestId)",
+			asMETHOD(SvenEnhancerAs, QueryClientCvarValue2),
+			asCALL_THISCALL
+		);
 
 		ASEXT_RegisterGlobalProperty(pASDoc, "Sven Enhancer", "SvenEnhancer@ SE", &g_SE);
 		ASEXT_RegisterGlobalProperty(pASDoc, "Sven Enhancer Entity", "SvenEnhancerEntity SE_ENT", &g_SEEnt);
@@ -589,7 +614,7 @@ void AngelScript_Expand() {
 
 
 		engine->RegisterObjectMethod(
-			"dictionary","string& GetString(string&in key) const",asFUNCTION(Dict_GetString),asCALL_CDECL_OBJFIRST
+			"dictionary", "string& GetString(string&in key) const", asFUNCTION(Dict_GetString), asCALL_CDECL_OBJFIRST
 		);
 		engine->RegisterObjectMethod(
 			"dictionary", "bool GetBool(string&in key) const", asFUNCTION(Dict_GetBool), asCALL_CDECL_OBJFIRST
@@ -609,7 +634,18 @@ void AngelScript_Expand() {
 		engine->RegisterObjectMethod(
 			"dictionary", "dictionary@ GetDict(string&in key) const", asFUNCTION(Dict_GetDict), asCALL_CDECL_OBJFIRST
 		);
-	});
+		engine->RegisterObjectType("SEVoiceState", 0, asOBJ_REF | asOBJ_NOCOUNT);
+		engine->RegisterObjectProperty("SEVoiceState", "bool Muted", asOFFSET(VoiceState, isMuted));
+		engine->RegisterObjectProperty("SEVoiceState", "int TeamId", asOFFSET(VoiceState, teamId));
+		engine->RegisterObjectProperty("SEVoiceState", "bool IsAdmin", asOFFSET(VoiceState, isAdmin));
+		engine->RegisterObjectProperty("SEVoiceState", "int Level", asOFFSET(VoiceState, level));
+		engine->RegisterObjectProperty("SvenEnhancer", "int Voice_MinLevel", asOFFSET(SvenEnhancerAs, voice_MinLevel));
+		engine->RegisterObjectProperty("SvenEnhancer", "bool Voice_AdminOnly", asOFFSET(SvenEnhancerAs, voice_AdminOnly));
+		engine->RegisterObjectProperty("SvenEnhancer", "bool Voice_Disabled", asOFFSET(SvenEnhancerAs, voice_Disabled));
+		engine->RegisterObjectMethod("SvenEnhancer", "SEVoiceState@ GetVoiceState(int index) const", asMETHOD(SvenEnhancerAs, GetVoiceState), asCALL_THISCALL);
+		engine->RegisterObjectMethod("SvenEnhancer", "SEVoiceState@ GetVoiceState(edict_t@ edict) const", asMETHOD(SvenEnhancerAs, GetVoiceStateE), asCALL_THISCALL);
+
+		});
 }
 
 
@@ -622,14 +658,41 @@ bool Angelscript_ClientCommand(edict_t* edict) {
 	std::string cmd = CMD_ARGV(0);
 	if (cmd == "svenenhancer")
 	{
+		auto adminState = GetAdminState(edict);
 		char msg[150];
-		sprintf(msg, "Sven Enhancer: v%.2f\nDate: %s\n", SE_VERSION_FLOAT, SE_DATE);
+		if (CMD_ARGC() > 1 && adminState.isOwner)
+		{
+			const char* subcmd = CMD_ARGV(1);
+			if (!subcmd)
+				return false;
+			if (!strcmp(subcmd, "flushadmins"))
+			{
+				LoadAdmins();
+				CLIENT_PRINTF(
+					edict,
+					print_console,
+					"[SE] Admins Reloaded\n"
+				);
+				return false;
+			}
+		}
+		if (adminState.isOwner)
+		{
+			sprintf(msg, "Sven Enhancer: v%.2f\nDate: %s\nflushadmins: Reload admins list\n", SE_VERSION_FLOAT, SE_DATE);
+		}
+		else
+		{
+			sprintf(msg, "Sven Enhancer: v%.2f\nDate: %s\n", SE_VERSION_FLOAT, SE_DATE);
+
+		}
+
 		CLIENT_PRINTF(
 			edict,
 			print_console,
 			msg
 		);
 		SET_META_RESULT(MRES_SUPERCEDE);
+
 		return true;
 	}
 	if (ignored_clcmds.contains(cmd))

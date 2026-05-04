@@ -28,6 +28,17 @@ struct DynamicArg
 	std::string strVal{};
 };
 
+inline bool ENTVALID(const edict_t* edict)
+{
+	if (!edict || edict->free || !edict->pvPrivateData)
+		return false;
+	return true;
+}
+inline bool ENTISPLAYER(const edict_t* edict)
+{
+	return ENTVALID(edict) && edict->v.flags & FL_CLIENT;
+}
+
 inline bool AS_SetDynamicArg(asIScriptContext* ctx,
 	asUINT index,
 	int typeId,
@@ -276,9 +287,12 @@ inline std::string AsGenericFormat(asIScriptGeneric* gen, std::string format, in
 				void* addr = gen->GetArgAddress(currentArg++);
 				int typeId = gen->GetArgTypeId(currentArg - 1);
 				char part[1024]{ 0 };
+				bool isNull = !addr;
 				int writed = 0;
 				if (type == 'd' || type == 'i' || type == 'u' || type == 'x' || type == 'X') {
-					if (typeId == asTYPEID_INT64 || typeId == asTYPEID_UINT64)
+					if (isNull)
+						writed = snprintf(part, sizeof(part), subFormat.c_str(), 0);
+					else if (typeId == asTYPEID_INT64 || typeId == asTYPEID_UINT64)
 						writed = snprintf(part, sizeof(part), subFormat.c_str(), *(int64_t*)addr);
 					else if (typeId == asTYPEID_DOUBLE)
 						writed = snprintf(part, sizeof(part), subFormat.c_str(), (int)*(double*)addr);
@@ -287,14 +301,19 @@ inline std::string AsGenericFormat(asIScriptGeneric* gen, std::string format, in
 
 				}
 				else if (type == 'f' || type == 'g' || type == 'e') {
-					if (typeId == asTYPEID_DOUBLE)
+					if(isNull)
+						writed = snprintf(part, sizeof(part), subFormat.c_str(), (double)0);
+					else if (typeId == asTYPEID_DOUBLE)
 						writed = snprintf(part, sizeof(part), subFormat.c_str(), *(double*)addr);
 					else
 						writed = snprintf(part, sizeof(part), subFormat.c_str(), (double)*(float*)addr);
 				}
 				else if (type == 's') {
 					CString* s = (CString*)addr;
-					writed = snprintf(part, sizeof(part), subFormat.c_str(), s ? s->c_str() : "");
+					if(!isNull)
+						writed = snprintf(part, sizeof(part), subFormat.c_str(), s ? s->c_str() : "");
+					else 
+						writed = snprintf(part, sizeof(part), subFormat.c_str(), "(null)");
 					i++;
 				}
 				if (writed > 0)
@@ -322,9 +341,9 @@ inline void* GetNumericAsVoid(asIScriptGeneric* gen, int index)
 		return (void*)*(asINT8*)addr;
 	if (typeId == asTYPEID_UINT8)
 		return (void*)*(unsigned char*)addr;
-	if (typeId == typeId == asTYPEID_INT16)
+	if (typeId == asTYPEID_INT16)
 		return (void*)*(asINT16*)addr;
-	if (typeId == typeId == asTYPEID_UINT16)
+	if (typeId  == asTYPEID_UINT16)
 		return (void*)*(unsigned short*)addr;
 	if (typeId == asTYPEID_INT32)
 		return (void*)*(asINT32*)addr;

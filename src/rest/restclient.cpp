@@ -117,7 +117,7 @@ bool RestClient::ExecuteAsync(RestRequest* request, asIScriptFunction* callback)
 
     InternalRequest* job = new InternalRequest();
     job->Request = request;
-    job->Callback = callback;
+    job->Callback = SEFunction::CreateFromFn(callback);
     if (request->data)
     {
 		job->UserData = request->data;
@@ -254,9 +254,8 @@ void RestClient::Dispatch() {
         if (job && job->Callback) {
 
             if (engine) {
-
-                ctx->Prepare(job->Callback);
-
+                job->Callback->BeginCall();
+                ctx->Prepare(job->Callback->GetFunction());
                 auto context = RestContext::Factory();
                 context->Request = job->Request;
                 context->Response = job->Response;
@@ -265,6 +264,7 @@ void RestClient::Dispatch() {
                 ctx->Execute();
                 //ctx->Release();
                 ctx->Unprepare();
+                job->Callback->EndCall();
                 job->Callback->Release();
 
             }

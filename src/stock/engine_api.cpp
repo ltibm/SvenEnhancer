@@ -39,6 +39,7 @@
 #include <meta_api.h>
 #include <angelscript_expansion.h>
 #include <message.h>
+#include <gameevents.h>
 
 #pragma region PreHooks
 static int SV_ModelIndex(const char* m) {
@@ -117,8 +118,8 @@ enginefuncs_t meta_engfuncs = {
 	NULL,						// pfnCVarRegister()
 	NULL,						// pfnCVarGetFloat()
 	NULL,						// pfnCVarGetString()
-	NULL,						// pfnCVarSetFloat()
-	NULL,						// pfnCVarSetString()
+	NULL, //Hook_CvarSetFloat,			// pfnCVarSetFloat()
+	NULL, //Hook_CvarSetString,			// pfnCVarSetString()
 
 	NULL,						// pfnAlertMessage()
 	NULL,						// pfnEngineFprintf()
@@ -218,7 +219,7 @@ enginefuncs_t meta_engfuncs = {
 	NULL,						// pfnSetGroupMask()
 
 	NULL,						// pfnCreateInstancedBaseline()
-	NULL,						// pfnCvar_DirectSet()
+	NULL, //Hook_CvarDirectSet,			// pfnCvar_DirectSet()
 
 	NULL,						// pfnForceUnmodified()
 
@@ -228,7 +229,7 @@ enginefuncs_t meta_engfuncs = {
 
 	// Added in SDK 2.2:
 	NULL,						// pfnVoice_GetClientListening()
-	NULL,						// pfnVoice_SetClientListening()
+	Voice_SetClientListening, // pfnVoice_SetClientListening()
 
 	// Added for HL 1109 (no SDK update):
 	NULL,						// pfnGetPlayerAuthId()
@@ -284,12 +285,12 @@ static NEW_DLL_FUNCTIONS gNewDllFunctionTable =
 	NULL,
 
 	// Added 2005/08/11 (no SDK update):
-	NULL,//void(*pfnCvarValue)(const edict_t *pEnt, const char *value);
+	Hook_CvarValue,//void(*pfnCvarValue)(const edict_t *pEnt, const char *value);
 
 	// Added 2005/11/21 (no SDK update):
 	//    value is "Bad CVAR request" on failure (i.e that user is not connected or the cvar does not exist).
 	//    value is "Bad Player" if invalid player edict.
-	NULL,//void(*pfnCvarValue2)(const edict_t *pEnt, int requestID, const char *cvarName, const char *value);
+	Hook_CvarValue2,//void(*pfnCvarValue2)(const edict_t *pEnt, int requestID, const char *cvarName, const char *value);
 };
 
 C_DLLEXPORT int GetNewDLLFunctions(NEW_DLL_FUNCTIONS* pNewDllFunctionTable,
@@ -306,6 +307,5 @@ C_DLLEXPORT int GetNewDLLFunctions(NEW_DLL_FUNCTIONS* pNewDllFunctionTable,
 		return(FALSE);
 	}
 	memcpy(pNewDllFunctionTable, &gNewDllFunctionTable, sizeof(NEW_DLL_FUNCTIONS));
-
 	return(TRUE);
 }

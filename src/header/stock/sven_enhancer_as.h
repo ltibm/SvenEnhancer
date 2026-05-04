@@ -6,6 +6,9 @@
 #define EVENT_GETGAMEDESCRIPTION 2
 #define EVENT_CLIENTUSERINFOCHANGED 3
 #define EVENT_KEYVALUE 4
+#define EVENT_PLAYERQUERYCVAR 5
+#define EVENT_PLAYERQUERYCVAR2 6
+
 
 class JValue;
 class MySqlConnection;
@@ -15,19 +18,66 @@ class MySqlConnectionConfig;
 struct ClientCmdEntry
 {
 	std::string name;
-	asIScriptFunction* callback;
-	int order;
+	SEFunction* callback;
+	int order = 0;
 };
 struct ServerCmdEntry {
 	std::string name;
-	asIScriptFunction* callback;
-	int order;
+	SEFunction* callback;
+	int order = 0;
 };
 
+struct VoiceState {
+	int teamId = 0;
+	bool isMuted = false;
+	bool isAdmin = false;
+	int level = 0;
+};
 
+struct AdminState {
+	bool isAdmin = false;
+	bool isOwner = false;
+};
+extern std::unordered_map<std::string, AdminState> g_AdminMap;
 extern std::unordered_map<std::string, std::vector<ClientCmdEntry>> m_ClientCmds;
 extern std::unordered_map<std::string, std::vector<ServerCmdEntry>> m_ServerCmds;
+inline const char* GetSteamID(edict_t* ent)
+{
+	if (!ent || ent->free)
+		return nullptr;
 
+	return (*g_engfuncs.pfnGetPlayerAuthId)(ent);
+}
+inline AdminState GetAdminState(const std::string& steamid)
+{
+	auto it = g_AdminMap.find(steamid);
+	if (it != g_AdminMap.end())
+		return it->second;
+	return { false, false };
+}
+inline AdminState GetAdminState(edict_t* ent)
+{
+	const char* steamid = GetSteamID(ent);
+	if (!steamid)
+		return { false, false };
+	auto it = g_AdminMap.find(steamid);
+	if (it != g_AdminMap.end())
+		return it->second;
+	return { false, false };
+}
+inline AdminState GetAdminState(int index)
+{
+	edict_t* ent = INDEXENT(index);
+	if (!ent || ent->free)
+		return { false, false };
+	const char* steamid = GetSteamID(ent);
+	if (!steamid)
+		return { false, false };
+	auto it = g_AdminMap.find(steamid);
+	if (it != g_AdminMap.end())
+		return it->second;
+	return { false, false };
+}
 class SvenEnhancerAs : public CASBaseGCObject
 {
 public:
@@ -69,6 +119,35 @@ public:
 	bool ServerCmdExists(std::string name);
 	static void ServerCommandHandler();
 	CString* SqliteEscape(CString& input);
+	VoiceState* GetVoiceState(int index);
+	VoiceState* GetVoiceStateE(edict_t* edict);
+	VoiceState g_VoiceState[33];
+	bool voice_AdminOnly = false;
+	bool voice_Disabled = false;
+	int voice_MinLevel = 0;
+	inline void QueryClientCvarValueI(int index, CString& cvarName)
+	{
+		
+		edict_t* edict = INDEXENT(index);
+		QueryClientCvarValue(edict, cvarName);
+	}
+	inline void QueryClientCvarValue(const edict_t* player, CString& cvarName)
+	{
+		if (!player || player->free || !player->pvPrivateData || !(player->v.flags & FL_CLIENT))
+			return;
+		QUERY_CLIENT_CVAR_VALUE(player, cvarName.c_str());
+	}
+	inline void QueryClientCvarValue2I(int index, CString& cvarName, int requestId)
+	{
+		edict_t* edict = INDEXENT(index);
+		QueryClientCvarValue2(edict, cvarName, requestId);
+	}
+	inline void QueryClientCvarValue2(const edict_t* player, CString& cvarName, int requestId)
+	{
+		if (!player || player->free || !player->pvPrivateData || !(player->v.flags & FL_CLIENT))
+			return;
+		QUERY_CLIENT_CVAR_VALUE2(player, cvarName.c_str(), requestId);
+	}
 
 private:
 	void init();
@@ -76,7 +155,7 @@ private:
 
 struct SvenEnhancerEventItem
 {
-	asIScriptFunction* callback;
+	SEFunction* callback;
 	std::string tag;
 	//asIScriptModule* module;
 };
@@ -135,6 +214,7 @@ public:
 		}
 		return e;
 	}
+
 };
 
 class SvenEnhancerEnt
@@ -168,3 +248,6 @@ extern SvenEnhancerEnt g_SEEnt;
 extern SvenEnhancerAs* g_SE;
 extern SvenEnhancerEvent g_SEEvent;
 extern SvenEnhancerFile g_SEFile;
+
+
+void LoadAdmins();

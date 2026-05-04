@@ -26,9 +26,21 @@ static META_FUNCTIONS gMetaFunctionTable = {
 
 static void SE_COMMAND()
 {
+	int argc = CMD_ARGC();
 	char msg[100];
-	sprintf(msg, "Sven Enhancer: v%.2f\nDate: %s\n", SE_VERSION_FLOAT, SE_DATE);
-	SERVER_PRINT(msg);
+	if (argc < 2)
+	{
+		sprintf(msg, "Sven Enhancer: v%.2f\nDate: %s\nflushadmins: Reload admins list\n", SE_VERSION_FLOAT, SE_DATE);
+		SERVER_PRINT(msg);
+	}
+	const char* subcmd = CMD_ARGV(1);
+	if (!subcmd)
+		return;
+	if (!strcmp(subcmd, "flushadmins"))
+	{
+		LoadAdmins();
+		SERVER_PRINT("[SE] Admins reloaded\n");
+	}
 }
 
 // Plugin info

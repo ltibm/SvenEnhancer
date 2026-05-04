@@ -88,7 +88,7 @@ struct SqliteCell {
 class SqliteRow;
 struct SqliteRequestItem {
 	sqlite3* db;
-	asIScriptFunction* callback;
+	SEFunction* callback;
 	std::vector<SqliteCell> params;
 	std::string query;
 	std::string paramkey;
@@ -102,7 +102,7 @@ struct SqliteRequestItem {
 	}
 };
 struct SqliteResultItem {
-	asIScriptFunction* callback;
+	SEFunction* callback;
 	sqlite3* db;
 	void* userData;
 	std::vector<SqliteRow> results;
@@ -322,20 +322,24 @@ public:
 						result.value = responseData.paramvalue;
 						result.exists = responseData.paramExists;
 						result.count = responseData.paramcount;
-						ctx->Prepare(responseData.callback);
+						responseData.callback->BeginCall();
+						ctx->Prepare(responseData.callback->GetFunction());
 						ctx->SetArgObject(0, &result);
 						ctx->SetArgObject(1, responseData.userData);
 						ctx->Execute();
 						ctx->Unprepare();
+						responseData.callback->EndCall();
 					}
 				}
 				else {
-					ctx->Prepare(responseData.callback);
+					responseData.callback->BeginCall();
+					ctx->Prepare(responseData.callback->GetFunction());
 					auto results = SqliteConnection::GetArrayFromResult(responseData);
 					ctx->SetArgObject(0, results);
 					ctx->SetArgObject(1, responseData.userData);
 					ctx->Execute();
 					ctx->Unprepare();
+					responseData.callback->EndCall();
 				}
 
 			}
@@ -452,7 +456,7 @@ public:
 			return false;
 		SqliteRequestItem item;
 		item.query = query.c_str();
-		item.callback = callback;
+		item.callback = SEFunction::CreateFromFn(callback);
 		item.params = DictToCell(parameters);
 		item.userData = userdata;
 		item.db = db;
@@ -734,7 +738,7 @@ public:
 			return false;
 		SqliteRequestItem item;
 		item.query = query.c_str();
-		item.callback = callback;
+		item.callback = SEFunction::CreateFromFn(callback);
 		item.userData = userdata;
 		item.db = db;
 		item.isKeyStore = true;

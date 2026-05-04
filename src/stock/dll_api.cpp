@@ -48,14 +48,15 @@ void SV_StartFrame(void) {
 	SET_META_RESULT(MRES_IGNORED);
 }
 
- void ServerDeactivate(void)
+void ServerDeactivate(void)
 {
 	ServerDeactivateAS();
 	ClearEntityData();
 	Angelscript_ServerDeactivate();
 	SET_META_RESULT(MRES_IGNORED);
 }
- void ServerActivate(edict_t* pEdictList, int edictCount, int clientMax) {
+void ServerActivate(edict_t* pEdictList, int edictCount, int clientMax) {
+	LoadAdmins();
 	ServerActivateAS();
 	Angelscript_ServerActivate(pEdictList, edictCount, clientMax);
 	if (s_HookedFlag) {
@@ -67,7 +68,7 @@ void SV_StartFrame(void) {
 	s_HookedFlag = true;
 	SET_META_RESULT(MRES_HANDLED);
 }
- void ClientCommand(edict_t* pEntity) {
+void ClientCommand(edict_t* pEntity) {
 	if (!pEntity->pvPrivateData) {
 		SET_META_RESULT(MRES_IGNORED);
 		return;
@@ -77,9 +78,10 @@ void SV_StartFrame(void) {
 		SET_META_RESULT(MRES_IGNORED);
 	}
 }
- void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer) {
+void ClientUserInfoChanged(edict_t* pEntity, char* infobuffer) {
 	SET_META_RESULT(MRES_IGNORED);
 }
+
 
 void ClientDisconnect(edict_t* pEntity) {
 	Angelscript_ClientDisconnect(pEntity);
@@ -105,7 +107,7 @@ static DLL_FUNCTIONS gFunctionTable = {
 	NULL,					// pfnRestoreGlobalState
 	NULL,					// pfnResetGlobalState
 
-	NULL,			// pfnClientConnect
+	Hook_ClientConnect,			// pfnClientConnect
 	ClientDisconnect,					// pfnClientDisconnect
 	NULL,					// pfnClientKill
 	NULL,					// pfnClientPutInServer

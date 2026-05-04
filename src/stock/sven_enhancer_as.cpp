@@ -6,7 +6,7 @@
 
 std::unordered_map<std::string, std::vector<ClientCmdEntry>> m_ClientCmds;
 std::unordered_map<std::string, std::vector<ServerCmdEntry>> m_ServerCmds;
-
+std::unordered_map<std::string, AdminState> g_AdminMap;
 SvenEnhancerAs::SvenEnhancerAs() {
 	init();
 }
@@ -210,7 +210,7 @@ bool SvenEnhancerAs::RegisterClientCmd(CString& name, asIScriptFunction* callbac
 
 	auto& list = m_ClientCmds[_name];
 	callback->AddRef();
-	list.push_back({ _name, callback, ordernum });
+	list.push_back({ _name, SEFunction::CreateFromFn(callback), ordernum});
 	std::sort(list.begin(), list.end(),
 		[](const ClientCmdEntry& a, const ClientCmdEntry& b)
 		{
@@ -230,7 +230,7 @@ bool SvenEnhancerAs::UnregisterClientCmd(CString& name, asIScriptFunction* callb
 		auto it = std::remove_if(list.begin(), list.end(),
 			[&](const ClientCmdEntry& e)
 			{
-				return e.callback == callback;
+				return e.callback->function	 == callback;
 			});
 		if (it != list.end())
 		{
@@ -292,22 +292,21 @@ int SvenEnhancerAs::TriggerClientCmd(edict_t* edict, const std::string& cmd)
 	CallbackItem item;
 	item.AddRef();
 	asIScriptContext* ctx = engine->RequestContext();
-
 	for (auto& entry : snapshot)
 	{
-		if (!entry.callback)
+		if (!entry.callback ||!entry.callback->BeginCall())
 			continue;
-
 		//item.StopCall = false;
 		//item.ReturnCode = 0;
 		if (!ctx)
 			continue;
-		ctx->Prepare(entry.callback);
+		ctx->Prepare(entry.callback->function);
 		ctx->SetArgAddress(0, edict);
 		ctx->SetArgAddress(1, &item);
 		int r = ctx->Execute();
 		lastr = ctx->GetReturnDWord();
 		ctx->Unprepare();
+		entry.callback->EndCall();
 		if (item.StopCall)
 			break;
 	}
@@ -323,7 +322,7 @@ bool SvenEnhancerAs::RegisterServerCmd(CString& name, asIScriptFunction* callbac
 	bool exists = ServerCmdExists(_name);
 	auto& list = m_ServerCmds[_name];
 	callback->AddRef();
-	list.push_back({ _name, callback, ordernum });
+	list.push_back({ _name, SEFunction::CreateFromFn(callback), ordernum });
 	std::sort(list.begin(), list.end(),
 		[](const ServerCmdEntry& a, const ServerCmdEntry& b)
 		{
@@ -349,7 +348,7 @@ bool SvenEnhancerAs::UnregisterServerCmd(CString& name, asIScriptFunction* callb
 		auto it = std::remove_if(list.begin(), list.end(),
 			[&](const ServerCmdEntry& e)
 			{
-				return e.callback == callback;
+				return e.callback->GetFunction() == callback;
 			});
 		if (it != list.end())
 		{
@@ -392,7 +391,6 @@ bool SvenEnhancerAs::UnregisterServerCmdsByModule(asIScriptModule* module)
 	}
 	return removed;
 }
-
 int SvenEnhancerAs::TriggerServerCmd(std::string& name)
 {
 	int lastr = 0;
@@ -411,17 +409,21 @@ int SvenEnhancerAs::TriggerServerCmd(std::string& name)
 	asIScriptContext* ctx = engine->RequestContext();
 	for (auto& entry : snapshot)
 	{
-		if (!entry.callback)
+		if (!entry.callback || !entry.callback->BeginCall())
 			continue;
 		//item.StopCall = false;
 		//item.ReturnCode = 0;
 		if (!ctx)
 			continue;
-		ctx->Prepare(entry.callback);
+
+		ctx->Prepare(entry.callback->GetFunction());
 		ctx->SetArgAddress(0, &item);
 		int r = ctx->Execute();
 		lastr = ctx->GetReturnDWord();
 		ctx->Unprepare();
+		entry.callback->EndCall();
+		//sub_C420(entry.callback->casf, rf);
+
 		if (item.StopCall)
 			break;
 	}
@@ -451,6 +453,22 @@ CString* SvenEnhancerAs::SqliteEscape(CString& input)
 	char* res = Sqlite3Fn._sqlite3_mprintf("%q", txt->c_str());
 	txt->assign(res, strlen(res));
 	return txt;
+}
+
+VoiceState* SvenEnhancerAs::GetVoiceState(int index)
+{
+	if (index < 0 || index > 32)
+	{
+		return nullptr;
+	}
+	return &g_VoiceState[index];
+}
+
+VoiceState* SvenEnhancerAs::GetVoiceStateE(edict_t* edict)
+{
+	if (!edict)
+		return nullptr;
+	return GetVoiceState(ENTINDEX(edict));
 }
 
 bool SvenEnhancerAs::ClientCmd(edict_t* edict, CString& command)
@@ -635,7 +653,7 @@ bool SvenEnhancerEvent::On(CString& name, asIScriptFunction* callback)
 	auto parsed = ParseEvent(_name);
 	auto& vec = g_events[parsed.name];
 	vec.push_back(SvenEnhancerEventItem{
-			callback,
+			SEFunction::CreateFromFn(callback),
 			parsed.tag
 		});
 	return true;
@@ -709,6 +727,14 @@ bool SvenEnhancerEvent::OnGameEvent(CString& key, void* obj, int typeId)
 			sig = "CallbackItem@ item, edict_t@ edict, SEKeyValueData@ keyvalue";
 			type = EVENT_KEYVALUE;
 		}
+		else if (prefix == "playerquerycvar") {
+			sig = "CallbackItem@ item, edict_t@ edict, string& in value";
+			type = EVENT_PLAYERQUERYCVAR;
+		}
+		else if (prefix == "playerquerycvar2") {
+			sig = "CallbackItem@ item, edict_t@ edict, int requestId, string&in name, string&in value";
+			type = EVENT_PLAYERQUERYCVAR2;
+		}
 		else
 			return false;
 	}
@@ -725,7 +751,7 @@ bool SvenEnhancerEvent::OnGameEvent(CString& key, void* obj, int typeId)
 	unsigned long long lkey = MAKE_EVENTKEY(type, inner);
 	auto& vec = g_gameEvents[lkey];
 	vec.push_back(SvenEnhancerEventItem{
-			callback,
+			SEFunction::CreateFromFn(callback),
 			parsed.tag
 		});
 	return true;
@@ -746,7 +772,7 @@ bool SvenEnhancerEvent::Off(CString& name, asIScriptFunction* callback)
 	auto& vec = it->second;
 	for (auto i = vec.begin(); i != vec.end(); )
 	{
-		bool matchFn = (callback == nullptr || i->callback == callback);
+		bool matchFn = (callback == nullptr || i->callback->GetFunction() == callback);
 		bool matchTag = (parsed.tag.empty() || i->tag == parsed.tag);
 		if (matchFn && matchTag)
 		{
@@ -812,6 +838,12 @@ bool SvenEnhancerEvent::OffGameEvent(CString& key, void* obj, int typeId)
 		else if (prefix == "keyvalue") {
 			type = EVENT_KEYVALUE;
 		}
+		else if (prefix == "playerquerycvar") {
+			type = EVENT_PLAYERQUERYCVAR;
+		}
+		else if (prefix == "playerquerycvar2") {
+			type = EVENT_PLAYERQUERYCVAR2;
+		}
 		else
 			return false;
 	}
@@ -826,7 +858,7 @@ bool SvenEnhancerEvent::OffGameEvent(CString& key, void* obj, int typeId)
 	auto curModule = GetActiveModule();
 	for (auto i = vec.begin(); i != vec.end(); )
 	{
-		bool matchFn = (callback == nullptr || i->callback == callback);
+		bool matchFn = (callback == nullptr || i->callback->GetFunction() == callback);
 		bool matchTag = (parsed.tag.empty() || i->tag == parsed.tag);
 		if (matchFn && matchTag && (!i->callback || i->callback->GetModule() == curModule))
 		{
@@ -869,18 +901,19 @@ size_t SvenEnhancerEvent::Trigger(CString& name, CallbackItem* item, bool callAl
 		return 0;
 	for (auto& entry : copy)
 	{
-		if (!entry.callback)
+		if (!entry.callback || !entry.callback->BeginCall())
 			continue;
 
 		//item.StopCall = false;
 		//item.ReturnCode = 0;
 
-		ctx->Prepare(entry.callback);
+		ctx->Prepare(entry.callback->GetFunction());
 		ctx->SetArgAddress(0, &name);
 		ctx->SetArgObject(1, item);
 		int r = ctx->Execute();
 		ctx->Unprepare();
 		total++;
+		entry.callback->EndCall();
 		if (item && item->StopCall && !callAll)
 			break;
 	}
@@ -912,11 +945,12 @@ size_t SvenEnhancerEvent::TriggerGameEvent(uint64_t key,  CallbackItem* item, co
 		return 0;
 	for (auto& entry : copy)
 	{
-		if (!entry.callback)
+		if (!entry.callback || !entry.callback->BeginCall())
 			continue;
-		ctx->Prepare(entry.callback);
+		auto function = entry.callback->GetFunction();
+		ctx->Prepare(function);
 		ctx->SetArgObject(0, item);
-		int argc = entry.callback->GetParamCount();
+		int argc = function->GetParamCount();
 		
 		if(args.size() > 0 && argc == args.size() + 1)
 		{
@@ -925,13 +959,14 @@ size_t SvenEnhancerEvent::TriggerGameEvent(uint64_t key,  CallbackItem* item, co
 				int typeId;
 				asDWORD flags;
 				const char* name;
-				entry.callback->GetParam(i + 1, &typeId, &flags, &name);
+				function->GetParam(i + 1, &typeId, &flags, &name);
 				AS_SetDynamicArg(ctx, 1 + i, typeId, args[i]);
 			}
 		}
 		int r = ctx->Execute();
 		ctx->Unprepare();
 		total++;
+		entry.callback->EndCall();
 		if (item && item->StopCall && !callAll)
 			break;
 	}
@@ -1071,4 +1106,38 @@ TValue* SvenEnhancerAs::Toml_Parse(CString& input)
 	{
 	}
 	return nullptr;
+}
+void LoadAdmins() {
+	g_AdminMap.clear();
+	const char* path = CVAR_GET_STRING("adminsfile");
+	std::ifstream file(AsGetPath(path));
+	if (!file.is_open())
+		return;
+	std::string line;
+
+	while (std::getline(file, line))
+	{
+		if (line.empty())
+			continue;
+		if (line.rfind("//", 0) == 0)
+			continue;
+		size_t hashPos = line.find('#');
+		if (hashPos != std::string::npos)
+			line = line.substr(0, hashPos);
+		if (line.empty())
+			continue;
+		std::istringstream iss(line);
+		std::string token;
+		iss >> token;
+		if (token.empty())
+			continue;
+
+		bool owner = false;
+		if (token[0] == '*')
+		{
+			owner = true;
+			token = token.substr(1);
+		}
+		g_AdminMap[token] = { true, owner };
+	}
 }

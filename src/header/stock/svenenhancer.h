@@ -29,6 +29,7 @@ namespace std {
 #include "asext_api.h"
 #include "constants.h"
 #include "casbasegcobject.h"
+#include "sefunction.h"
 #include "sven_enhancer_as.h"
 #include "globaltypes.h"
 #include "utilities.h"

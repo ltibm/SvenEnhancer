@@ -108,6 +108,38 @@ Currently supported events;
       string key = item.KeyValue;
   }
   isRegistered = SE_EVENT.OnGame("keyvalue", @HookKeyValue);
+
+   //playerquerycvar
+	void ClientQueryCvarValue(CallbackItem@ item, edict_t@ edict, string&in cvar)
+	{
+		if(item is null)
+		{
+			SE.Printf("Bad cvar\n");
+			return;
+		}
+		string plName = string(edict.vars.netname);
+		SE.Printf("Client cvar player: %s cvar_value: %s\n",  plName,  cvar);
+	}
+   isRegistered = SE_EVENT.OnGame("playerquerycvar", @ClientQueryCvarValue);
+
+   //playerquerycvar2
+	void ClientQueryCvarValue2(CallbackItem@ item, edict_t@ edict, int requestId, string&in cvarname, string&in value)
+	{
+		if(item is null)
+		{
+			SE.Printf("Bad cvar2 requestId: %d\n", requestId);
+			return;
+		}
+		string plName = string(edict.vars.netname);
+		SE.Printf("Client cvar2 player: %s\ncvar: %s\nrequestId: %d\nvalue: %s\n", plName, cvarname, requestId, value);
+	}
+   isRegistered = SE_EVENT.OnGame("playerquerycvar2", @ClientQueryCvarValue2);
+
+	//For  Query Client Cvar Value
+	SE.QueryClientCvarValue(1, "rate");
+	int requestId = 123456;
+	SE.QueryClientCvarValue2(1, "rate", requestId);
+	
 ```
 
 

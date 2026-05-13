@@ -1,6 +1,8 @@
 RestClient@ client = RestClient();
 CTextMenu@ menu_whereFrom;
 CTextMenu@ menu_whereFromDetails;
+Cvar@ cvar_MessageFormat;
+Cvar@ cvar_MessageDest;
 class IpInfo
 {
 	bool Pending = false;
@@ -22,8 +24,14 @@ void PluginInit()
 	g_Module.ScriptInfo.SetAuthor( "S!" );
 	g_Module.ScriptInfo.SetContactInfo( "steam:ibmlt" );
 	g_Hooks.RegisterHook(Hooks::Player::ClientConnected, @ClientConnected);
+	g_Hooks.RegisterHook( Hooks::Player::ClientPutInServer, @ClientPutInServer );
 	g_Hooks.RegisterHook(Hooks::Player::ClientSay, @ClientSay);
 	SE.RegisterServerCmd("wherefrom", @WhoIsCallback);
+	@cvar_MessageFormat = SE.RegisterCvar("user_connected_format", "{nick} Connecting from [{country}]", FCVAR_NONE);
+	//0: Disabled
+	//1: Show message in ClientConnected event
+	//2: Show message in ClientPutinServer event(recommenend)
+	@cvar_MessageDest = SE.RegisterCvar("user_connected_dest", "2", FCVAR_NONE, 2.0f);
 }
 void PluginExit()
 {
@@ -38,7 +46,18 @@ void PluginExit()
 		if(menu_whereFromDetails.IsRegistered())
 			menu_whereFromDetails.Unregister();
 		@menu_whereFromDetails = null;
-	}
+	}	
+	for(int i = 1; i <= g_Engine.maxClients; i++)
+    {
+        CBasePlayer@ pPlayer = g_PlayerFuncs.FindPlayerByIndex(i);
+        if(pPlayer is null)
+            continue;
+        if(!pPlayer.IsConnected())
+            continue;
+        dictionary@ data = pPlayer.GetData();
+		if(data !is null)
+			data.delete("IpInfo");
+    }
 }
 void MapInit()
 {
@@ -257,7 +276,8 @@ void QueryUserCountry(edict_t@ eEdict, const string &in sNick, const string &in 
 								info.Country = json.GetString("/country", true);
 								info.CountryCode = json.GetString("/countryCode", true);
 								info.As = json.GetString("/as", true);
-								string message = SE.Interpolate("{nick} Connecting from [{country}]\n", {{"nick", nick}, {"country", info.Country}});
+								string fmt = cvar_MessageFormat.GetString() + "\n";
+								string message = SE.Interpolate(fmt, {{"nick", nick}, {"country", info.Country}});
 								g_PlayerFuncs.ClientPrintAll(HUD_PRINTTALK, message);
 							}
 							//ReAssing new info
@@ -268,8 +288,27 @@ void QueryUserCountry(edict_t@ eEdict, const string &in sNick, const string &in 
 		}
 	});
 }
+HookReturnCode ClientPutInServer( CBasePlayer@ pPlayer )
+{
+	if(cvar_MessageDest.value != 2.0)
+		return HOOK_CONTINUE;
+	dictionary@ data = pPlayer.GetData();
+	if(data !is null)
+	{
+		string sIp = data.GetString("IpAddress");
+		if(sIp != "")
+			QueryUserCountry(pPlayer.edict(), string(pPlayer.pev.netname), sIp);
+	}
+
+	return HOOK_CONTINUE;
+}
 HookReturnCode ClientConnected(edict_t@ eEdict, const string &in sNick, const string &in sIp, bool &out bNoJoin, string &out sReason)
 {
+	dictionary@ data = eEdict.GetData();
+	if(data !is null)
+		data["IpAddress"] = sIp;
+	if(cvar_MessageDest.value != 1.0)
+		return HOOK_CONTINUE;
 	QueryUserCountry(@eEdict, sNick, sIp);
 	return HOOK_CONTINUE;
 }

@@ -211,6 +211,7 @@ void ShowSlotMenu(CBasePlayer@ pPlayer)
 void MapInit()
 {
 	weaponSlots.clear();
+	positions.clear();
 }
 void GetSlotUsages()
 {

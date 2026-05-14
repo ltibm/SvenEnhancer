@@ -292,7 +292,7 @@ void HookWeaponList(CallbackItem@ item)
 			slotItem.Position = iPosition;
 		}
 	}
-	IncreaseUsed(iSlot, iPosition);
+	IncreaseUsed(iSlot, slotItem.Position);
 	weaponSlots[className] = slotItem;
 
 }

@@ -286,6 +286,11 @@ void HookWeaponList(CallbackItem@ item)
 				//No empty slots founds
 				slotItem.NotFix = true;
 			}
+			else
+			{
+				//Increase original position used counts
+				IncreaseUsed(iSlot, slotItem.PositionOriginal);
+			}
 			SE_EVENT.MessageContext.SetArgByte(6, slotItem.Position);
 		}
 		else
